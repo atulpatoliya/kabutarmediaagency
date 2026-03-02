@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SaaS Wireframes & Project Roadmap</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+
+  /* NAV */
+  .top-nav {
+    background: #1a1a2e;
+    padding: 14px 32px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  }
+  .top-nav h1 { color: #fff; font-size: 18px; font-weight: 700; flex: 1; }
+  .nav-tab {
+    padding: 8px 18px; border-radius: 20px; cursor: pointer;
+    font-size: 13px; font-weight: 600; border: none;
+    background: rgba(255,255,255,0.1); color: #aaa;
+    transition: all 0.2s;
+  }
+  .nav-tab.active { background: #6c63ff; color: #fff; }
+  .nav-tab:hover:not(.active) { background: rgba(255,255,255,0.2); color: #fff; }
+
+  /* SECTIONS */
+  .section { display: none; padding: 32px; max-width: 1400px; margin: 0 auto; }
+  .section.active { display: block; }
+  .section-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; color: #1a1a2e; }
+  .section-sub { color: #666; margin-bottom: 32px; font-size: 14px; }
+
+  /* WIREFRAME GRID */
+  .wf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(560px, 1fr)); gap: 28px; }
+  .wf-card {
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+    overflow: hidden; border: 1px solid #e8e8f0;
+  }
+  .wf-card-header {
+    background: #f7f7fc; padding: 14px 20px;
+    border-bottom: 1px solid #e8e8f0;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .wf-card-header .dots { display: flex; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #ffbd2e; } .dot.g { background: #28c840; }
+  .wf-card-header span { font-size: 12px; color: #888; font-weight: 600; flex: 1; text-align: center; }
+  .wf-body { padding: 20px; }
+
+  /* WIREFRAME COMPONENTS */
+  .wf-bar { height: 10px; background: #e0e0ee; border-radius: 4px; margin-bottom: 8px; }
+  .wf-bar.short { width: 35%; } .wf-bar.med { width: 60%; } .wf-bar.long { width: 85%; } .wf-bar.full { width: 100%; }
+  .wf-bar.dark { background: #b0b0cc; }
+  .wf-box { background: #f0f0fa; border-radius: 8px; border: 1.5px dashed #c8c8e0; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #aaa; font-weight: 600; }
+  .wf-btn { background: #6c63ff; border-radius: 6px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; font-weight: 700; }
+  .wf-btn.outline { background: transparent; border: 2px solid #6c63ff; color: #6c63ff; }
+  .wf-input { background: #f7f7fc; border: 1.5px solid #ddd; border-radius: 6px; height: 36px; padding: 0 12px; display: flex; align-items: center; font-size: 11px; color: #bbb; }
+  .wf-nav { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .wf-logo { width: 80px; height: 28px; background: #6c63ff; border-radius: 6px; }
+  .wf-nav-links { display: flex; gap: 8px; flex: 1; }
+  .wf-nav-link { height: 10px; background: #e0e0ee; border-radius: 3px; width: 50px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
+  .sidebar { width: 140px; flex-shrink: 0; background: #f0f0fa; border-radius: 8px; padding: 12px; }
+  .sidebar-item { height: 8px; background: #d0d0ea; border-radius: 3px; margin-bottom: 10px; }
+  .sidebar-item.active { background: #6c63ff; }
+  .main-area { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .flex { display: flex; gap: 12px; }
+  .stat-card { flex: 1; background: #f7f7fc; border-radius: 8px; padding: 12px; border: 1.5px solid #e8e8f0; }
+  .stat-num { height: 18px; background: #6c63ff; border-radius: 4px; width: 60px; margin-bottom: 6px; }
+  .chart-area { height: 90px; background: linear-gradient(to right, #f0eeff, #e0d8ff); border-radius: 8px; border: 1.5px dashed #c8c8e0; display: flex; align-items: flex-end; padding: 8px; gap: 5px; overflow: hidden; }
+  .bar-item { flex: 1; border-radius: 3px 3px 0 0; background: #6c63ff; opacity: 0.5; }
+  .table-row { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid #f0f0f8; }
+  .table-cell { height: 8px; background: #e0e0ee; border-radius: 3px; }
+  .hero { background: linear-gradient(135deg, #f0eeff 0%, #fff 100%); border-radius: 10px; padding: 24px; margin-bottom: 14px; text-align: center; }
+  .hero .big-bar { height: 20px; background: #6c63ff; border-radius: 6px; width: 50%; margin: 0 auto 10px; }
+  .feature-card { background: #f7f7fc; border-radius: 8px; padding: 14px; border: 1.5px solid #e8e8f0; }
+  .feature-icon { width: 32px; height: 32px; background: #e0d8ff; border-radius: 8px; margin-bottom: 8px; }
+  .auth-card { max-width: 320px; margin: 0 auto; background: #f7f7fc; border-radius: 12px; padding: 24px; border: 1.5px solid #e0e0ee; }
+  .divider { height: 1px; background: #e8e8f0; margin: 14px 0; }
+  .avatar { width: 60px; height: 60px; background: #e0d8ff; border-radius: 50%; margin: 0 auto 12px; }
+  .settings-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f0f0f8; }
+  .settings-label { flex: 1; height: 9px; background: #e0e0ee; border-radius: 3px; }
+  .toggle { width: 36px; height: 18px; background: #6c63ff; border-radius: 9px; flex-shrink: 0; }
+  .toggle.off { background: #ddd; }
+  .tab-row { display: flex; gap: 4px; margin-bottom: 14px; }
+  .tab-item { padding: 7px 14px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .tab-item.active { background: #6c63ff; color: #fff; }
+  .tab-item:not(.active) { background: #f0f0fa; color: #999; }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .badge.green { background: #d4f7e7; color: #1a8a4a; }
+  .badge.purple { background: #e0d8ff; color: #6c63ff; }
+
+  /* ROADMAP */
+  .roadmap-container { display: flex; flex-direction: column; gap: 0; }
+  .phase {
+    display: flex; gap: 0; position: relative;
+  }
+  .phase-line {
+    display: flex; flex-direction: column; align-items: center; width: 60px; flex-shrink: 0;
+  }
+  .phase-dot {
+    width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0; z-index: 1;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+  }
+  .connector { width: 3px; flex: 1; min-height: 20px; }
+  .phase-content {
+    flex: 1; background: #fff; border-radius: 14px; padding: 22px 26px;
+    margin-left: 16px; margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.06); border: 1px solid #e8e8f0;
+  }
+  .phase-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .phase-title { font-size: 18px; font-weight: 800; }
+  .phase-badge { padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+  .phase-duration { font-size: 12px; color: #888; margin-left: auto; }
+  .tasks { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .task {
+    display: flex; align-items: flex-start; gap: 10px; background: #f7f7fc;
+    border-radius: 8px; padding: 12px;
+  }
+  .task-check { width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; margin-top: 1px; }
+  .task-text { font-size: 13px; color: #444; line-height: 1.4; }
+  .task-text strong { display: block; font-weight: 700; color: #1a1a2e; font-size: 13px; }
+
+  /* COLORS PER PHASE */
+  .p1 .phase-dot { background: linear-gradient(135deg, #6c63ff, #9b59b6); }
+  .p1 .connector { background: linear-gradient(to bottom, #6c63ff, #3498db); }
+  .p1 .phase-badge { background: #e0d8ff; color: #6c63ff; }
+  .p1 .task-check { background: #6c63ff; }
+  .p2 .phase-dot { background: linear-gradient(135deg, #3498db, #1abc9c); }
+  .p2 .connector { background: linear-gradient(to bottom, #3498db, #2ecc71); }
+  .p2 .phase-badge { background: #d4ecff; color: #2980b9; }
+  .p2 .task-check { background: #3498db; }
+  .p3 .phase-dot { background: linear-gradient(135deg, #2ecc71, #f1c40f); }
+  .p3 .connector { background: linear-gradient(to bottom, #2ecc71, #e67e22); }
+  .p3 .phase-badge { background: #d4f7e7; color: #1a8a4a; }
+  .p3 .task-check { background: #2ecc71; }
+  .p4 .phase-dot { background: linear-gradient(135deg, #e67e22, #e74c3c); }
+  .p4 .connector { background: linear-gradient(to bottom, #e67e22, #e74c3c); }
+  .p4 .phase-badge { background: #fff0e0; color: #e67e22; }
+  .p4 .task-check { background: #e67e22; }
+  .p5 .phase-dot { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+  .p5 .phase-badge { background: #ffe0e0; color: #e74c3c; }
+  .p5 .task-check { background: #e74c3c; }
+
+  /* FLOW DIAGRAM */
+  .flow-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 24px; }
+  .flow-card {
+    background: #fff; border-radius: 12px; padding: 18px;
+    box-shadow: 0 3px 16px rgba(0,0,0,0.06); border: 1px solid #e8e8f0;
+    text-align: center; position: relative;
+  }
+  .flow-icon { width: 48px; height: 48px; border-radius: 14px; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+  .flow-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .flow-desc { font-size: 12px; color: #888; line-height: 1.5; }
+  .flow-pages { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-top: 8px; }
+  .flow-page { background: #f0eeff; color: #6c63ff; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
+  .arrow-row { display: flex; justify-content: center; align-items: center; gap: 0; margin: 8px 0; }
+  .arrow { font-size: 20px; color: #c0c0d0; }
+  .timeline-bar { margin-top: 32px; }
+  .tl-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .tl-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .tl-label { width: 120px; font-size: 12px; font-weight: 600; color: #555; flex-shrink: 0; text-align: right; }
+  .tl-track { flex: 1; height: 20px; background: #f0f0fa; border-radius: 6px; overflow: hidden; position: relative; }
+  .tl-fill { height: 100%; border-radius: 6px; display: flex; align-items: center; padding-left: 8px; font-size: 10px; font-weight: 700; color: #fff; }
+  .tl-weeks { font-size: 11px; color: #888; width: 60px; }
+</style>
+</head>
+<body>
+
+<div class="top-nav">
+  <h1>🧩 SaaS Project — Wireframes & Roadmap</h1>
+  <button class="nav-tab active" onclick="show('wireframes', this)">Wireframes</button>
+  <button class="nav-tab" onclick="show('flow', this)">Page Flow</button>
+  <button class="nav-tab" onclick="show('roadmap', this)">Roadmap</button>
+</div>
+
+<!-- ===== WIREFRAMES ===== -->
+<div id="wireframes" class="section active">
+  <div class="section-title">Page Wireframes</div>
+  <div class="section-sub">Low-fidelity layouts for all 4 core pages of your SaaS application.</div>
+
+  <div class="wf-grid">
+
+    <!-- LANDING PAGE -->
+    <div class="wf-card">
+      <div class="wf-card-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>🏠 Landing / Home Page</span>
+      </div>
+      <div class="wf-body">
+        <!-- Navbar -->
+        <div class="wf-nav">
+          <div class="wf-logo"></div>
+          <div class="wf-nav-links">
+            <div class="wf-nav-link"></div>
+            <div class="wf-nav-link"></div>
+            <div class="wf-nav-link"></div>
+          </div>
+          <div class="wf-btn outline" style="width:80px;font-size:10px;">Log In</div>
+          <div class="wf-btn" style="width:90px;font-size:10px;">Get Started</div>
+        </div>
+        <!-- Hero -->
+        <div class="hero">
+          <div class="big-bar"></div>
+          <div class="wf-bar med dark" style="margin:0 auto 10px;"></div>
+          <div class="wf-bar short" style="margin:0 auto 16px;"></div>
+          <div style="display:flex;gap:10px;justify-content:center;">
+            <div class="wf-btn" style="width:120px;">Start Free Trial</div>
+            <div class="wf-btn outline" style="width:110px;">Watch Demo</div>
+          </div>
+        </div>
+        <!-- Features -->
+        <div style="margin-bottom:6px;"><div class="wf-bar short dark" style="margin:0 auto;"></div></div>
+        <div class="grid-3" style="margin-top:10px;">
+          <div class="feature-card"><div class="feature-icon"></div><div class="wf-bar full"></div><div class="wf-bar med"></div><div class="wf-bar long"></div></div>
+          <div class="feature-card"><div class="feature-icon"></div><div class="wf-bar full"></div><div class="wf-bar short"></div><div class="wf-bar med"></div></div>
+          <div class="feature-card"><div class="feature-icon"></div><div class="wf-bar full"></div><div class="wf-bar med"></div><div class="wf-bar long"></div></div>
+        </div>
+        <!-- Pricing strip -->
+        <div style="margin-top:14px;">
+          <div class="wf-bar short dark" style="margin:0 auto 10px;"></div>
+          <div class="grid-3">
+            <div class="wf-box" style="height:80px;">Free</div>
+            <div class="wf-box" style="height:80px;background:#e0d8ff;border-color:#6c63ff;">Pro</div>
+            <div class="wf-box" style="height:80px;">Enterprise</div>
+          </div>
+        </div>
+        <!-- Footer -->
+        <div class="divider"></div>
+        <div class="grid-4">
+          <div><div class="wf-bar full"></div><div class="wf-bar med"></div></div>
+          <div><div class="wf-bar full"></div><div class="wf-bar short"></div></div>
+          <div><div class="wf-bar full"></div><div class="wf-bar med"></div></div>
+          <div><div class="wf-bar full"></div><div class="wf-bar short"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="wf-card">
+      <div class="wf-card-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>📊 Dashboard Page</span>
+      </div>
+      <div class="wf-body">
+        <!-- Top bar -->
+        <div class="wf-nav" style="margin-bottom:14px;">
+          <div class="wf-logo"></div>
+          <div style="flex:1;"></div>
+          <div class="wf-box" style="width:160px;height:28px;">🔔 Search…</div>
+          <div class="wf-box" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #c8c8e0;">👤</div>
+        </div>
+        <div class="flex">
+          <!-- Sidebar -->
+          <div class="sidebar">
+            <div class="sidebar-item active"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div style="margin-top:20px;"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+          </div>
+          <!-- Main -->
+          <div class="main-area">
+            <!-- Stats -->
+            <div class="grid-4">
+              <div class="stat-card"><div class="stat-num"></div><div class="wf-bar full"></div><div class="wf-bar med" style="margin:0;"></div></div>
+              <div class="stat-card"><div class="stat-num" style="background:#2ecc71;"></div><div class="wf-bar full"></div><div class="wf-bar med" style="margin:0;"></div></div>
+              <div class="stat-card"><div class="stat-num" style="background:#3498db;"></div><div class="wf-bar full"></div><div class="wf-bar med" style="margin:0;"></div></div>
+              <div class="stat-card"><div class="stat-num" style="background:#e67e22;"></div><div class="wf-bar full"></div><div class="wf-bar med" style="margin:0;"></div></div>
+            </div>
+            <!-- Chart -->
+            <div class="chart-area">
+              <div class="bar-item" style="height:60%;"></div>
+              <div class="bar-item" style="height:80%;"></div>
+              <div class="bar-item" style="height:50%;"></div>
+              <div class="bar-item" style="height:90%;"></div>
+              <div class="bar-item" style="height:70%;"></div>
+              <div class="bar-item" style="height:100%;opacity:0.8;"></div>
+              <div class="bar-item" style="height:75%;"></div>
+              <div class="bar-item" style="height:55%;"></div>
+            </div>
+            <!-- Table -->
+            <div style="background:#f7f7fc;border-radius:8px;padding:10px;border:1.5px solid #e8e8f0;">
+              <div class="wf-bar short dark" style="margin-bottom:10px;"></div>
+              <div class="table-row"><div class="table-cell" style="width:30%;"></div><div class="table-cell" style="width:20%;"></div><div class="table-cell" style="width:20%;"></div><div class="badge green">Active</div></div>
+              <div class="table-row"><div class="table-cell" style="width:30%;"></div><div class="table-cell" style="width:20%;"></div><div class="table-cell" style="width:20%;"></div><div class="badge purple">Pending</div></div>
+              <div class="table-row"><div class="table-cell" style="width:30%;"></div><div class="table-cell" style="width:20%;"></div><div class="table-cell" style="width:20%;"></div><div class="badge green">Active</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTH PAGE -->
+    <div class="wf-card">
+      <div class="wf-card-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>🔐 Auth — Login / Signup</span>
+      </div>
+      <div class="wf-body">
+        <div style="display:flex;gap:20px;">
+          <!-- Login -->
+          <div style="flex:1;">
+            <div style="text-align:center;margin-bottom:14px;font-size:11px;font-weight:700;color:#888;">LOGIN FORM</div>
+            <div class="auth-card">
+              <div class="wf-logo" style="margin:0 auto 14px;"></div>
+              <div class="tab-row" style="justify-content:center;">
+                <div class="tab-item active">Log In</div>
+                <div class="tab-item">Sign Up</div>
+              </div>
+              <div class="wf-bar long" style="margin:0 auto 12px;"></div>
+              <div style="margin-bottom:10px;">
+                <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                <div class="wf-input">email@example.com</div>
+              </div>
+              <div style="margin-bottom:14px;">
+                <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                <div class="wf-input">••••••••</div>
+              </div>
+              <div class="wf-btn" style="margin-bottom:10px;">Log In →</div>
+              <div class="divider"></div>
+              <div class="wf-box" style="height:32px;font-size:10px;">G Continue with Google</div>
+              <div class="wf-bar med" style="margin:10px auto 0;"></div>
+            </div>
+          </div>
+          <!-- Sign Up -->
+          <div style="flex:1;">
+            <div style="text-align:center;margin-bottom:14px;font-size:11px;font-weight:700;color:#888;">SIGNUP FORM</div>
+            <div class="auth-card">
+              <div class="wf-logo" style="margin:0 auto 14px;"></div>
+              <div class="tab-row" style="justify-content:center;">
+                <div class="tab-item">Log In</div>
+                <div class="tab-item active">Sign Up</div>
+              </div>
+              <div class="grid-2" style="margin-bottom:10px;">
+                <div>
+                  <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                  <div class="wf-input">First name</div>
+                </div>
+                <div>
+                  <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                  <div class="wf-input">Last name</div>
+                </div>
+              </div>
+              <div style="margin-bottom:10px;">
+                <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                <div class="wf-input">email@example.com</div>
+              </div>
+              <div style="margin-bottom:14px;">
+                <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                <div class="wf-input">Create password</div>
+              </div>
+              <div class="wf-btn">Create Account →</div>
+              <div class="divider"></div>
+              <div class="wf-box" style="height:32px;font-size:10px;">G Continue with Google</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS / PROFILE -->
+    <div class="wf-card">
+      <div class="wf-card-header">
+        <div class="dots"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div></div>
+        <span>⚙️ Settings / Profile Page</span>
+      </div>
+      <div class="wf-body">
+        <div class="flex">
+          <!-- Sidebar -->
+          <div class="sidebar" style="width:120px;">
+            <div style="font-size:10px;font-weight:700;color:#aaa;margin-bottom:8px;">SETTINGS</div>
+            <div class="sidebar-item active"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+            <div class="sidebar-item"></div>
+          </div>
+          <!-- Content -->
+          <div class="main-area">
+            <!-- Profile Section -->
+            <div style="background:#f7f7fc;border-radius:10px;padding:16px;border:1.5px solid #e8e8f0;">
+              <div class="wf-bar short dark" style="margin-bottom:12px;"></div>
+              <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+                <div style="width:50px;height:50px;border-radius:50%;background:#e0d8ff;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>
+                <div style="flex:1;">
+                  <div class="wf-bar med dark" style="margin-bottom:6px;"></div>
+                  <div class="wf-bar short"></div>
+                </div>
+                <div class="wf-btn outline" style="width:90px;font-size:10px;">Change Photo</div>
+              </div>
+              <div class="grid-2">
+                <div>
+                  <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                  <div class="wf-input">First name</div>
+                </div>
+                <div>
+                  <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                  <div class="wf-input">Last name</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <div class="wf-bar short" style="margin-bottom:4px;"></div>
+                <div class="wf-input">email@example.com</div>
+              </div>
+            </div>
+            <!-- Notifications -->
+            <div style="background:#f7f7fc;border-radius:10px;padding:16px;border:1.5px solid #e8e8f0;">
+              <div class="wf-bar short dark" style="margin-bottom:10px;"></div>
+              <div class="settings-row"><div class="settings-label"></div><div class="toggle"></div></div>
+              <div class="settings-row"><div class="settings-label"></div><div class="toggle off"></div></div>
+              <div class="settings-row"><div class="settings-label"></div><div class="toggle"></div></div>
+            </div>
+            <!-- Danger zone -->
+            <div style="background:#fff5f5;border-radius:10px;padding:14px;border:1.5px solid #ffd0d0;display:flex;align-items:center;gap:12px;">
+              <div style="flex:1;"><div class="wf-bar med" style="background:#ffb0b0;margin-bottom:4px;"></div><div class="wf-bar long" style="background:#ffc8c8;margin:0;"></div></div>
+              <div class="wf-btn" style="background:#e74c3c;width:100px;font-size:10px;">Delete Account</div>
+            </div>
+            <div class="wf-btn" style="width:120px;">Save Changes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== PAGE FLOW ===== -->
+<div id="flow" class="section">
+  <div class="section-title">Page Flow & Architecture</div>
+  <div class="section-sub">How pages connect and user journeys through the app.</div>
+
+  <div class="flow-grid">
+    <div class="flow-card">
+      <div class="flow-icon" style="background:#e0d8ff;">🌐</div>
+      <div class="flow-title">Landing Page</div>
+      <div class="flow-desc">Entry point for all visitors. Drives conversions to sign-up or log-in.</div>
+      <div class="flow-pages"><span class="flow-page">/</span><span class="flow-page">/pricing</span><span class="flow-page">/features</span></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;font-size:28px;color:#c0c0d0;">→</div>
+    <div class="flow-card">
+      <div class="flow-icon" style="background:#d4ecff;">🔐</div>
+      <div class="flow-title">Auth Pages</div>
+      <div class="flow-desc">Login, Sign Up, Password Reset, Email Verification flows.</div>
+      <div class="flow-pages"><span class="flow-page">/login</span><span class="flow-page">/signup</span><span class="flow-page">/reset</span></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;font-size:28px;color:#c0c0d0;">→</div>
+    <div class="flow-card">
+      <div class="flow-icon" style="background:#d4f7e7;">📊</div>
+      <div class="flow-title">Dashboard</div>
+      <div class="flow-desc">Main app hub with metrics, charts, recent activity and quick actions.</div>
+      <div class="flow-pages"><span class="flow-page">/dashboard</span><span class="flow-page">/analytics</span></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;font-size:28px;color:#c0c0d0;">→</div>
+    <div class="flow-card">
+      <div class="flow-icon" style="background:#fff0e0;">⚙️</div>
+      <div class="flow-title">Settings</div>
+      <div class="flow-desc">Profile, notifications, billing, team management, security.</div>
+      <div class="flow-pages"><span class="flow-page">/settings</span><span class="flow-page">/profile</span><span class="flow-page">/billing</span></div>
+    </div>
+  </div>
+
+  <div class="timeline-bar">
+    <div class="tl-title">📅 Effort Estimate per Page</div>
+    <div class="tl-row">
+      <div class="tl-label">Landing Page</div>
+      <div class="tl-track"><div class="tl-fill" style="width:70%;background:linear-gradient(90deg,#6c63ff,#9b59b6);">Design + Dev</div></div>
+      <div class="tl-weeks">2–3 weeks</div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-label">Auth System</div>
+      <div class="tl-track"><div class="tl-fill" style="width:50%;background:linear-gradient(90deg,#3498db,#1abc9c);">Auth Logic</div></div>
+      <div class="tl-weeks">1–2 weeks</div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-label">Dashboard</div>
+      <div class="tl-track"><div class="tl-fill" style="width:90%;background:linear-gradient(90deg,#2ecc71,#27ae60);">Most Complex</div></div>
+      <div class="tl-weeks">3–5 weeks</div>
+    </div>
+    <div class="tl-row">
+      <div class="tl-label">Settings/Profile</div>
+      <div class="tl-track"><div class="tl-fill" style="width:40%;background:linear-gradient(90deg,#e67e22,#d35400);">CRUD + UI</div></div>
+      <div class="tl-weeks">1–2 weeks</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ROADMAP ===== -->
+<div id="roadmap" class="section">
+  <div class="section-title">Project Roadmap</div>
+  <div class="section-sub">5 phases from discovery to growth. Estimated timeline: 16–22 weeks.</div>
+
+  <div class="roadmap-container">
+
+    <div class="phase p1">
+      <div class="phase-line">
+        <div class="phase-dot">1</div>
+        <div class="connector"></div>
+      </div>
+      <div class="phase-content">
+        <div class="phase-header">
+          <div class="phase-title">🔍 Discovery & Planning</div>
+          <span class="phase-badge">Foundation</span>
+          <div class="phase-duration">⏱ Weeks 1–2</div>
+        </div>
+        <div class="tasks">
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Define target users</strong>Personas, pain points, jobs-to-be-done</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Competitive analysis</strong>Survey 5+ competitors, identify gaps</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Tech stack decision</strong>Frontend, backend, DB, hosting choices</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Project scope doc</strong>Features, out-of-scope, success metrics</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Wireframes (all pages)</strong>Low-fi sketches for all 4 pages ← You are here</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Set up repo & CI/CD</strong>GitHub, pipelines, environments</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase p2">
+      <div class="phase-line">
+        <div class="phase-dot">2</div>
+        <div class="connector"></div>
+      </div>
+      <div class="phase-content">
+        <div class="phase-header">
+          <div class="phase-title">🎨 Design & Prototyping</div>
+          <span class="phase-badge">Design</span>
+          <div class="phase-duration">⏱ Weeks 3–5</div>
+        </div>
+        <div class="tasks">
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Design system</strong>Colors, typography, spacing, components</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>High-fidelity mockups</strong>All 4 pages in Figma / design tool</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Interactive prototype</strong>Clickable flows for user testing</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>User testing round 1</strong>5+ sessions, iterate on feedback</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Responsive layouts</strong>Mobile, tablet, desktop breakpoints</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Accessibility review</strong>WCAG 2.1 AA compliance check</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase p3">
+      <div class="phase-line">
+        <div class="phase-dot">3</div>
+        <div class="connector"></div>
+      </div>
+      <div class="phase-content">
+        <div class="phase-header">
+          <div class="phase-title">🛠️ Core Development</div>
+          <span class="phase-badge">Build</span>
+          <div class="phase-duration">⏱ Weeks 6–13</div>
+        </div>
+        <div class="tasks">
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Auth system</strong>Login, signup, OAuth, JWT tokens</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Landing page</strong>Marketing copy, hero, features, pricing</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Dashboard UI</strong>Stats cards, charts, tables, sidebar</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Dashboard APIs</strong>Backend data endpoints, aggregations</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Settings / Profile</strong>CRUD for user data, preferences</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Database schema</strong>Models, migrations, indexes</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Email system</strong>Transactional emails, templates</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Unit + integration tests</strong>80%+ code coverage target</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase p4">
+      <div class="phase-line">
+        <div class="phase-dot">4</div>
+        <div class="connector"></div>
+      </div>
+      <div class="phase-content">
+        <div class="phase-header">
+          <div class="phase-title">🚀 Launch Preparation</div>
+          <span class="phase-badge">Pre-Launch</span>
+          <div class="phase-duration">⏱ Weeks 14–17</div>
+        </div>
+        <div class="tasks">
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>QA & bug bash</strong>Full regression on all pages & flows</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Performance audit</strong>Lighthouse, Core Web Vitals targets</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Security review</strong>Penetration testing, OWASP checks</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Analytics setup</strong>Event tracking, funnels, dashboards</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Beta program</strong>Recruit 20–50 early users, gather data</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Documentation</strong>User docs, API docs, onboarding guide</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase p5">
+      <div class="phase-line">
+        <div class="phase-dot">5</div>
+      </div>
+      <div class="phase-content">
+        <div class="phase-header">
+          <div class="phase-title">📈 Launch & Growth</div>
+          <span class="phase-badge">Ongoing</span>
+          <div class="phase-duration">⏱ Week 18+</div>
+        </div>
+        <div class="tasks">
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Public launch</strong>ProductHunt, Hacker News, socials</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Billing integration</strong>Stripe subscriptions, invoicing</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>User onboarding flow</strong>Welcome emails, in-app walkthroughs</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Monitoring & alerts</strong>Uptime, error tracking, on-call</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Feature iterations</strong>Bi-weekly sprint cycles with user data</div></div>
+          <div class="task"><div class="task-check"></div><div class="task-text"><strong>Customer support</strong>Help center, chat widget, ticketing</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
