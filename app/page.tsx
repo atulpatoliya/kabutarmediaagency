@@ -1,80 +1,204 @@
-import Link from "next/link";
-import { ArrowRight, ShieldCheck, Newspaper, Banknote } from "lucide-react";
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Search,
+  TrendingUp,
+  Shield,
+  Clock,
+  CheckCircle,
+  Newspaper,
+  ArrowRight,
+  Users,
+  Star,
+  Zap
+} from 'lucide-react';
+
+const features = [
+  {
+    icon: Shield,
+    title: 'Exclusive Rights',
+    description: 'Every news story sold grants complete exclusive rights to the buyer.',
+  },
+  {
+    icon: Clock,
+    title: '30-Day Access',
+    description: 'Buyers get 30 days to access and download purchased content.',
+  },
+  {
+    icon: CheckCircle,
+    title: 'Verified Reporters',
+    description: 'All reporters are vetted and approved before publishing.',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Fair Pricing',
+    description: 'Reporters set their price, platform takes a small commission.',
+  },
+  {
+    icon: Zap,
+    title: 'Instant Payment',
+    description: 'Reporters receive payment within 24 hours of a successful sale.',
+  },
+  {
+    icon: Users,
+    title: 'Growing Community',
+    description: 'Join thousands of reporters and media agencies on our platform.',
+  },
+];
+
+const categories = ['Politics', 'Business', 'Technology', 'Sports', 'Entertainment', 'Health', 'World', 'Crime'];
 
 export default function Home() {
   return (
-    <div className="bg-white">
+    <div className="min-h-screen">
       {/* Hero Section */}
-      <div className="relative isolate px-6 pt-14 lg:px-8">
-        <div className="mx-auto max-w-2xl py-32 sm:py-48 lg:py-56 text-center">
-          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-            Exclusive Digital News Marketplace
+      <section className="bg-gradient-to-br from-orange-50 via-white to-green-50 py-20 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <Badge className="mb-6 bg-orange-100 text-orange-700 border-orange-200 px-4 py-1 text-sm">
+            India&apos;s #1 Exclusive News Marketplace
+          </Badge>
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+            Buy &amp; Sell
+            <span className="text-primary"> Exclusive </span>
+            News Stories
           </h1>
-          <p className="mt-6 text-lg tracking-tight text-gray-600 px-4">
-            The premium platform for reporters to sell exclusive news stories directly to media houses and agencies. One story. One buyer. 30 days of exclusive access.
+          <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+            Connect reporters with media agencies. Sell your breaking news stories
+            exclusively and get paid fairly for your journalism.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link
-              href="/marketplace"
-              className="rounded-md bg-blue-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            >
-              Browse Marketplace
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/marketplace">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 py-6 text-lg">
+                <Search className="mr-2 h-5 w-5" />
+                Browse Marketplace
+              </Button>
             </Link>
-            <Link href="/apply-reporter" className="text-sm font-semibold leading-6 text-gray-900 group">
-              Apply as a Reporter <ArrowRight className="inline w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <Link href="/apply-reporter">
+              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-orange-50 px-8 py-6 text-lg">
+                <Newspaper className="mr-2 h-5 w-5" />
+                Become a Reporter
+              </Button>
             </Link>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Feature Section */}
-      <div className="bg-gray-50 py-24 sm:py-32">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:text-center">
-            <h2 className="text-base font-semibold leading-7 text-blue-600">Secure & Exclusive</h2>
-            <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-              Everything you need to buy and sell news
-            </p>
+      {/* How It Works */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">How It Works</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">Simple, transparent, and fast. Start buying or selling news in minutes.</p>
           </div>
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
-            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16">
-              <div className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
-                    <ShieldCheck className="h-6 w-6 text-white" aria-hidden="true" />
-                  </div>
-                  Exclusive Rights
-                </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Once a story is purchased, it is removed from the marketplace immediately ensuring total exclusivity.
-                </dd>
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              { step: '01', title: 'Reporter Submits Story', desc: 'Verified reporters upload exclusive news stories with a price tag.' },
+              { step: '02', title: 'Admin Reviews & Approves', desc: 'Our team verifies authenticity and quality before listing.' },
+              { step: '03', title: 'Buyer Purchases Exclusive Rights', desc: 'Media agencies buy stories gaining complete exclusive rights.' },
+            ].map((item) => (
+              <div key={item.step} className="text-center p-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-primary font-bold text-lg">{item.step}</span>
+                </div>
+                <h3 className="text-xl font-semibold mb-3 text-gray-900">{item.title}</h3>
+                <p className="text-gray-600">{item.desc}</p>
               </div>
-              <div className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
-                    <Newspaper className="h-6 w-6 text-white" aria-hidden="true" />
-                  </div>
-                  Verified Reporters
-                </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">
-                  All news content is provided by our verified reporters and undergoes administrative review before publishing.
-                </dd>
-              </div>
-              <div className="relative pl-16">
-                <dt className="text-base font-semibold leading-7 text-gray-900">
-                  <div className="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-blue-600">
-                    <Banknote className="h-6 w-6 text-white" aria-hidden="true" />
-                  </div>
-                  Fair Compensation
-                </dt>
-                <dd className="mt-2 text-base leading-7 text-gray-600">
-                  Reporters set their price and get paid within 24 hours of their story being sold on the platform.
-                </dd>
-              </div>
-            </dl>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Features Grid */}
+      <section className="py-16 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Why Choose Us</h2>
+            <p className="text-gray-600">Everything you need to buy and sell news stories professionally.</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {features.map((feature) => (
+              <Card key={feature.title} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center mb-3">
+                    <feature.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 text-sm">{feature.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Categories */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Browse by Category</h2>
+            <p className="text-gray-600">News stories across all major beats and sectors.</p>
+          </div>
+          <div className="flex flex-wrap gap-3 justify-center">
+            {categories.map((cat) => (
+              <Link key={cat} href={`/marketplace?category=${cat.toLowerCase()}`}>
+                <Badge
+                  variant="outline"
+                  className="px-5 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                >
+                  {cat}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 px-4 bg-gradient-to-r from-primary to-secondary text-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {[
+              { label: 'Active Reporters', value: '500+' },
+              { label: 'Stories Sold', value: '2,000+' },
+              { label: 'Media Agencies', value: '150+' },
+              { label: 'Categories', value: '20+' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <div className="text-4xl font-bold mb-2">{stat.value}</div>
+                <div className="text-white/80">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 px-4 bg-gray-900 text-white text-center">
+        <div className="max-w-3xl mx-auto">
+          <Star className="h-10 w-10 text-accent mx-auto mb-6" />
+          <h2 className="text-4xl font-bold mb-6">Ready to Get Started?</h2>
+          <p className="text-gray-400 text-lg mb-10">
+            Join hundreds of reporters and media agencies already using our platform.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link href="/signup">
+              <Button size="lg" className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg">
+                Create Free Account
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link href="/marketplace">
+              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900 px-8 py-6 text-lg">
+                View Marketplace
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

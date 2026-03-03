@@ -1,6 +1,24 @@
 -- schema.sql
 -- Run this in Supabase SQL editor to create the db
 
+-- 0. CLEANUP (Drop existing objects if you are re-running this script)
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+DROP FUNCTION IF EXISTS public.record_news_view(UUID, TEXT);
+DROP FUNCTION IF EXISTS public.get_user_role(UUID);
+
+DROP TABLE IF EXISTS public.news_views CASCADE;
+DROP TABLE IF EXISTS public.queries CASCADE;
+DROP TABLE IF EXISTS public.transactions CASCADE;
+DROP TABLE IF EXISTS public.news CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.reporter_profiles CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
+DROP TYPE IF EXISTS user_role CASCADE;
+DROP TYPE IF EXISTS user_status CASCADE;
+DROP TYPE IF EXISTS news_status CASCADE;
+
 -- 1. Enable pgcrypto
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
