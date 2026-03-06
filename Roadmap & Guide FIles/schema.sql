@@ -206,10 +206,12 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('news-media', 'news-media', true)
 ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
 CREATE POLICY "Public Access"
 ON storage.objects FOR SELECT
 USING ( bucket_id = 'news-media' );
 
+DROP POLICY IF EXISTS "Users can insert media" ON storage.objects;
 CREATE POLICY "Users can insert media"
 ON storage.objects FOR INSERT
 WITH CHECK ( bucket_id = 'news-media' AND auth.uid() IS NOT NULL );
