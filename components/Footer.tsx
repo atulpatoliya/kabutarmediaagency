@@ -25,15 +25,15 @@ export function Footer() {
           <div className="mt-4 space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 text-primary" />
-              <span>support@newsmarket.com</span>
+              <span>kabutarmedia@gmail.com</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-primary" />
-              <span>+91 1234567890</span>
+              <span>+91 9726530209</span>
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-primary" />
-              <span>Mumbai, Maharashtra, India</span>
+              <span>Ahmedabad, Gujarat, India</span>
             </div>
           </div>
         </div>
