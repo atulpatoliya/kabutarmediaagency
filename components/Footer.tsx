@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Newspaper, Mail, Phone, MapPin } from 'lucide-react';
 
 export function Footer() {
@@ -8,10 +9,14 @@ export function Footer() {
         {/* Brand */}
         <div className="col-span-1 md:col-span-2">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Newspaper className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-white font-bold text-xl">NewsMarket</span>
+            <Image
+              src="/Kabutar media logo.webp"
+              alt="Kabutar Media"
+              width={40}
+              height={40}
+              className="rounded-md object-contain"
+            />
+            <span className="text-white font-bold text-xl">Kabutar Media</span>
           </div>
           <p className="text-sm text-gray-400 leading-relaxed max-w-sm">
             India&apos;s leading marketplace for exclusive news stories. Connecting verified
@@ -72,7 +77,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-gray-800 py-4 text-center text-xs text-gray-500">
-        <p>© {new Date().getFullYear()} NewsMarket. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} Kabutar Media. All rights reserved.</p>
       </div>
     </footer>
   );
