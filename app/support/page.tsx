@@ -5,14 +5,14 @@ export default function SupportPage() {
       <p className="text-gray-600 mb-8">Need help? Reach out to us and we&apos;ll get back to you within 24 hours.</p>
 
       <div className="grid md:grid-cols-2 gap-6 mb-10">
-        <div className="bg-orange-50 border border-orange-100 rounded-xl p-6">
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-2">📧 Email Support</h2>
-          <p className="text-sm text-gray-600">support@newsmarket.com</p>
+          <p className="text-sm text-gray-600">kabutarmedia@gmail.com</p>
           <p className="text-xs text-gray-400 mt-1">Response within 24 hours</p>
         </div>
-        <div className="bg-green-50 border border-green-100 rounded-xl p-6">
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-6">
           <h2 className="font-semibold text-gray-900 mb-2">📞 Phone Support</h2>
-          <p className="text-sm text-gray-600">+91 1234567890</p>
+          <p className="text-sm text-gray-600">+91 9726530209</p>
           <p className="text-xs text-gray-400 mt-1">Mon–Sat, 9am–6pm IST</p>
         </div>
       </div>

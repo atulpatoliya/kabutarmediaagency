@@ -54,9 +54,9 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-orange-50 via-white to-green-50 py-20 px-4">
+      <section className="bg-gradient-to-br from-blue-50 via-white to-gray-50 py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
-          <Badge className="mb-6 bg-orange-100 text-orange-700 border-orange-200 px-4 py-1 text-sm">
+          <Badge className="mb-6 bg-blue-100 text-blue-700 border-blue-200 px-4 py-1 text-sm">
             India&apos;s #1 Exclusive News Marketplace
           </Badge>
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
@@ -76,7 +76,7 @@ export default function Home() {
               </Button>
             </Link>
             <Link href="/apply-reporter">
-              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-orange-50 px-8 py-6 text-lg">
+              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-blue-50 px-8 py-6 text-lg">
                 <Newspaper className="mr-2 h-5 w-5" />
                 Become a Reporter
               </Button>

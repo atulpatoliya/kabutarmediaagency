@@ -45,7 +45,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-green-50 flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50 flex items-center justify-center py-12 px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
