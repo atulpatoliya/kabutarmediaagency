@@ -3,9 +3,9 @@
 
 -- 0. CLEANUP (Drop existing objects if you are re-running this script)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-DROP FUNCTION IF EXISTS public.handle_new_user();
-DROP FUNCTION IF EXISTS public.record_news_view(UUID, TEXT);
-DROP FUNCTION IF EXISTS public.get_user_role(UUID);
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.record_news_view(UUID, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS public.get_user_role(UUID) CASCADE;
 
 DROP TABLE IF EXISTS public.news_views CASCADE;
 DROP TABLE IF EXISTS public.queries CASCADE;
