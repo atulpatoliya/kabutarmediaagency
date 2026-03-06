@@ -202,7 +202,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Storage setup for 'news-media'
-INSERT INTO storage.buckets (id, name, public) VALUES ('news-media', 'news-media', true);
+INSERT INTO storage.buckets (id, name, public) 
+VALUES ('news-media', 'news-media', true)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE POLICY "Public Access"
 ON storage.objects FOR SELECT
