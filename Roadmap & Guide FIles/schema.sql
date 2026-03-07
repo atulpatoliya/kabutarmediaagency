@@ -224,3 +224,19 @@ DROP POLICY IF EXISTS "Users can insert media" ON storage.objects;
 CREATE POLICY "Users can insert media"
 ON storage.objects FOR INSERT
 WITH CHECK ( bucket_id = 'news-media' AND auth.uid() IS NOT NULL );
+
+-- 11. Platform Applications (Lead Gen Forms without Auth)
+CREATE TABLE IF NOT EXISTS public.platform_applications (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    type TEXT NOT NULL CHECK (type IN ('buyer', 'reporter')),
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    message TEXT,
+    status TEXT DEFAULT 'pending' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.platform_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can insert applications" ON public.platform_applications FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can view and update applications" ON public.platform_applications USING (get_user_role(auth.uid()) = 'admin');

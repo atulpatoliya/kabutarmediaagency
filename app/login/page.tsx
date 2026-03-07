@@ -25,7 +25,7 @@ export default function Login() {
     try {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) {
-        setError(authError.message);
+        setError('Invalid login credentials. Please contact support at support@kabutarmedia.com for assistance.');
       } else {
         router.push('/dashboard');
       }
@@ -84,12 +84,6 @@ export default function Login() {
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={isLoading}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</> : 'Sign In'}
             </Button>
-            <p className="text-center text-sm text-gray-600">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-primary hover:underline font-medium">
-                Sign up
-              </Link>
-            </p>
           </form>
         </CardContent>
       </Card>

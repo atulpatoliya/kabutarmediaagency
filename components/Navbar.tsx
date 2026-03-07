@@ -10,7 +10,8 @@ import { createClient } from '@/lib/supabaseClient';
 
 const navLinks = [
   { href: '/marketplace', label: 'Marketplace' },
-  { href: '/apply-reporter', label: 'Become a Reporter' },
+  { href: '/apply-buyer', label: 'Join as Buyer' },
+  { href: '/apply-reporter', label: 'Join as Reporter' },
   { href: '/support', label: 'Support' },
 ];
 
@@ -106,10 +107,7 @@ export function Navbar() {
             ) : (
               <>
                   <Link href="/login">
-                    <Button variant="ghost" size="sm">Sign In</Button>
-                  </Link>
-                  <Link href="/signup">
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">Get Started</Button>
+                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">Sign In</Button>
                   </Link>
               </>
             )}
@@ -160,10 +158,7 @@ export function Navbar() {
               ) : (
                 <div className="flex gap-2">
                   <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full">Sign In</Button>
-                  </Link>
-                    <Link href="/signup" className="flex-1" onClick={() => setMobileOpen(false)}>
-                      <Button size="sm" className="w-full bg-primary text-white">Get Started</Button>
+                      <Button size="sm" className="w-full bg-primary text-white">Sign In</Button>
                     </Link>
                 </div>
               )}

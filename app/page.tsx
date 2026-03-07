@@ -69,16 +69,16 @@ export default function Home() {
             exclusively and get paid fairly for your journalism.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/marketplace">
+            <Link href="/apply-buyer">
               <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 py-6 text-lg">
                 <Search className="mr-2 h-5 w-5" />
-                Browse Marketplace
+                Join as Buyer
               </Button>
             </Link>
             <Link href="/apply-reporter">
               <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-blue-50 px-8 py-6 text-lg">
                 <Newspaper className="mr-2 h-5 w-5" />
-                Become a Reporter
+                Join as Reporter
               </Button>
             </Link>
           </div>
@@ -185,15 +185,16 @@ export default function Home() {
             Join hundreds of reporters and media agencies already using our platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup">
+            <Link href="/apply-reporter">
               <Button size="lg" className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg">
-                Create Free Account
-                <ArrowRight className="ml-2 h-5 w-5" />
+                <Newspaper className="mr-2 h-5 w-5" />
+                Apply as Reporter
               </Button>
             </Link>
-            <Link href="/marketplace">
+            <Link href="/apply-buyer">
               <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900 px-8 py-6 text-lg">
-                View Marketplace
+                Apply as Buyer
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
           </div>

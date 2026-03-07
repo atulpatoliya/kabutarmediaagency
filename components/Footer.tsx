@@ -44,9 +44,9 @@ export function Footer() {
           <ul className="space-y-2 text-sm">
             {[
               { href: '/marketplace', label: 'Marketplace' },
-              { href: '/apply-reporter', label: 'Become a Reporter' },
+              { href: '/apply-buyer', label: 'Join as Buyer' },
+              { href: '/apply-reporter', label: 'Join as Reporter' },
               { href: '/login', label: 'Sign In' },
-              { href: '/signup', label: 'Create Account' },
             ].map((link) => (
               <li key={link.href}>
                 <Link href={link.href} className="hover:text-primary transition-colors">

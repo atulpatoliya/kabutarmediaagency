@@ -13,7 +13,8 @@ import {
   X,
   Bell,
   ShieldCheck,
-  Users
+  Users,
+  Inbox
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
@@ -112,6 +113,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <Users className="h-4 w-4" />
                 Manage Users
+              </Link>
+              <Link
+                href="/dashboard/admin/applications"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mt-1 ${pathname === '/dashboard/admin/applications'
+                  ? 'bg-red-50 text-red-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+              >
+                <Inbox className="h-4 w-4" />
+                View Applications
               </Link>
             </>
           )}
