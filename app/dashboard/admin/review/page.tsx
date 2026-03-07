@@ -25,8 +25,7 @@ export default function AdminReviewDashboard() {
         .select(`
           *,
           users:reporter_id (
-            email,
-            reporter_profiles:id (
+            reporter_profiles (
               full_name,
               phone
             )
@@ -169,9 +168,9 @@ export default function AdminReviewDashboard() {
                     
                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Reporter Identity</h4>
-                      {/* Note: This requires joining with reporter profiles, or we show generic for now if not available */}
+                      {/* Note: Email is managed securely in auth.users and not exposed directly here */}
                       <p className="text-sm font-medium text-gray-900">{item.users?.reporter_profiles?.[0]?.full_name || 'Verification Pending'}</p>
-                      <p className="text-xs text-gray-600">{item.users?.email || 'No email attached'}</p>
+                      <p className="text-xs text-gray-600">{item.users?.reporter_profiles?.[0]?.phone || 'No phone attached'}</p>
                     </div>
 
                     <div className="space-y-3 pt-2">
