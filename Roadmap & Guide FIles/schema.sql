@@ -109,11 +109,23 @@ ALTER TABLE public.queries ENABLE ROW LEVEL SECURITY;
 
 -- Helper Function
 CREATE OR REPLACE FUNCTION get_user_role(user_id UUID)
-RETURNS user_role AS $$
-BEGIN
-  RETURN (SELECT role FROM public.users WHERE id = user_id);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+RETURNS user_role
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT role FROM public.users WHERE id = user_id;
+$$;
+
+-- Secure lookup function for news purchases to prevent infinite RLS loops
+CREATE OR REPLACE FUNCTION get_user_news_purchases(p_user_id UUID)
+RETURNS SETOF UUID 
+LANGUAGE sql 
+SECURITY DEFINER 
+SET search_path = public
+AS $$
+  SELECT news_id FROM public.transactions WHERE buyer_id = p_user_id;
+$$;
 
 -- Users Table Policies
 CREATE POLICY "Users can read own data" ON public.users FOR SELECT USING (auth.uid() = id);
@@ -152,10 +164,7 @@ CREATE POLICY "Reporters can update own news if not published" ON public.news FO
   USING (auth.uid() = reporter_id AND status != 'published' AND status != 'sold');
 CREATE POLICY "Admins have full access to news" ON public.news USING (get_user_role(auth.uid()) = 'admin');
 CREATE POLICY "Buyers can read purchased news" ON public.news FOR SELECT USING (
-  EXISTS (
-    SELECT 1 FROM public.transactions 
-    WHERE transactions.news_id = news.id AND transactions.buyer_id = auth.uid()
-  )
+  id IN (SELECT get_user_news_purchases(auth.uid()))
 );
 
 -- Transactions Policies

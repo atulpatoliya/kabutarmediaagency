@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ export default function CreateNewsStory() {
   const router = useRouter();
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -29,6 +30,16 @@ export default function CreateNewsStory() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+
+
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data } = await supabase.from('categories').select('id, name');
+      if (data) setCategories(data);
+    }
+    fetchCategories();
+  }, [supabase]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -42,6 +53,7 @@ export default function CreateNewsStory() {
         title: formData.title,
         description: formData.description,
         content: formData.content,
+        category_id: formData.categoryId || null, // pass category ID!
         state: formData.state,
         city: formData.city,
         reporter_price: parseFloat(formData.reporterPrice),
@@ -157,11 +169,9 @@ export default function CreateNewsStory() {
                     required
                   >
                     <option value="" disabled>Select a category</option>
-                    <option value="politics">Politics</option>
-                    <option value="crime">Crime</option>
-                    <option value="business">Business</option>
-                    <option value="sports">Sports</option>
-                    <option value="entertainment">Entertainment</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
