@@ -185,7 +185,7 @@ export default function AdminApplicationsDashboard() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {app.status === 'pending' ? (
+                        {app.status !== 'approved' && app.status !== 'rejected' ? (
                         <div className="flex gap-2 justify-center">
                           <Button
                             size="sm"
