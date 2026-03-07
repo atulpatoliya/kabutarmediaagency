@@ -23,38 +23,49 @@ export default function MasterAdminLogin() {
     setIsLoading(true);
 
     try {
+      // Step 1: Sign in with email/password
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
         email, 
         password 
       });
 
       if (authError) {
-        setError(authError.message);
+        setError('Invalid login credentials. Please check your email and password.');
         setIsLoading(false);
         return;
       }
 
-      // Check if user is actually an admin
+      // Step 2: Check user role using maybeSingle() to avoid 406 error when row not found
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('role')
         .eq('id', authData.user.id)
-        .single();
+        .maybeSingle();
 
-      if (userError || userData.role !== 'admin') {
-        // Not an admin, log them out and show error
+      if (userError) {
+        console.error('Role check error:', userError);
         await supabase.auth.signOut();
-        setError('Access Denied: You do not have master admin privileges.');
-      } else {
-        // Success
-        router.push('/dashboard');
+        setError('Could not verify user role. Please contact support: kabutarmedia@gmail.com');
+        return;
       }
-    } catch {
+
+      if (!userData || userData.role !== 'admin') {
+        await supabase.auth.signOut();
+        setError('Access Denied: You do not have master admin privileges. Contact: kabutarmedia@gmail.com | +91 9726530209');
+        return;
+      }
+
+      // Step 3: Admin confirmed — redirect directly to review panel
+      router.push('/dashboard/admin/review');
+
+    } catch (err) {
+      console.error('Master admin login error:', err);
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
