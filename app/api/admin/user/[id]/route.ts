@@ -148,20 +148,38 @@ export async function POST(
       }
 
       // Send via Resend
+      // Send via Resend
       const resendApiKey = process.env.RESEND_API_KEY;
       if (resendApiKey) {
         const resend = new Resend(resendApiKey);
         try {
-          await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'Kabutar Media <onboarding@resend.dev>',
+          const resendResponse = await resend.emails.send({
+            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
             to: [email],
             subject: 'Reset Your Kabutar Media Password',
             html: resetPasswordEmailHTML(name || 'User', linkData.properties.action_link)
           });
+
+          if (resendResponse.error) {
+            console.error('Resend Validation Error:', resendResponse.error);
+            // If development mode / free tier throws 403 on unverified domain, return the link safely
+            return NextResponse.json({
+              success: true,
+              emailSent: false,
+              resetLink: linkData.properties.action_link,
+              notice: resendResponse.error.message
+            });
+          }
+
           return NextResponse.json({ success: true, emailSent: true });
         } catch (emailErr: any) {
           console.error('Password reset email error:', emailErr);
-          return NextResponse.json({ error: 'Failed to send automated email: ' + emailErr.message }, { status: 500 });
+          return NextResponse.json({
+            success: true,
+            emailSent: false,
+            resetLink: linkData.properties.action_link,
+            notice: 'Email sent failed due to an exception. You can copy the link manually.'
+          });
         }
       } else {
         // Return the link directly to the admin so they can copy-paste it
