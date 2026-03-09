@@ -19,6 +19,8 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const [userId, setUserId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isSendingLink, setIsSendingLink] = useState(false);
+  const [generatedResetLink, setGeneratedResetLink] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
@@ -117,8 +119,8 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
         if (result.emailSent) {
           alert(`Password reset link successfully sent to ${newEmail}`);
         } else {
-          // If Resend is not configured, we still get the link back safely
-          alert(`Reset link generated but email could not be sent. You can manually copy the link: \n\n${result.resetLink}`);
+          // Display the link safely in the UI instead of a blocking alert
+          setGeneratedResetLink(result.resetLink);
         }
       } else {
         alert(result.error || 'Failed to send reset link.');
@@ -345,12 +347,36 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                 Update Login Credentials
               </h3>
               <button 
-                onClick={() => setShowCredModal(false)}
+                onClick={() => {
+                  setShowCredModal(false);
+                  setGeneratedResetLink('');
+                }}
                 className="text-gray-400 hover:text-gray-600 text-xl font-bold"
               >✕</button>
             </div>
             
             <div className="p-6 space-y-5">
+              {generatedResetLink && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 space-y-2">
+                  <p className="font-semibold flex items-center gap-1.5"><Mail className="w-4 h-4" /> Email server pending setup.</p>
+                  <p className="text-xs opacity-90">However, a secure reset link was generated! Manually copy and share this link:</p>
+                  <div className="flex gap-2 mt-2">
+                    <Input value={generatedResetLink} readOnly className="bg-white h-8 text-xs font-mono" />
+                    <Button
+                      size="sm"
+                      className="h-8 shrink-0 bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        navigator.clipboard.writeText(generatedResetLink);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 2000);
+                      }}
+                    >
+                      {copiedLink ? <CheckCircle className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
+                      {copiedLink ? 'Copied' : 'Copy'}
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 flex items-start gap-2">
                 <span className="text-amber-500 mt-0.5">🔒</span>
                 <p>For security, Supabase permanently hashes passwords. You <strong>cannot view</strong> the current password, but you can securely reset it below.</p>
@@ -393,17 +419,22 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
             </div>
             
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col gap-3">
-              <Button 
-                variant="outline"
-                className="w-full text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
-                onClick={handleSendResetLink} 
-                disabled={isSendingLink || isUpdatingCreds || !newEmail}
-              >
-                {isSendingLink ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
-                Send Reset Link to User's Email
-              </Button>
+              {!generatedResetLink && (
+                <Button
+                  variant="outline"
+                  className="w-full text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
+                  onClick={handleSendResetLink}
+                  disabled={isSendingLink || isUpdatingCreds || !newEmail}
+                >
+                  {isSendingLink ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Mail className="w-4 h-4 mr-2" />}
+                  Send Reset Link to User's Email
+                </Button>
+              )}
               <div className="flex justify-end gap-3 w-full">
-                <Button variant="outline" onClick={() => setShowCredModal(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => {
+                  setShowCredModal(false);
+                  setGeneratedResetLink('');
+                }}>Cancel</Button>
                 <Button 
                   onClick={handleUpdateCreds} 
                   disabled={isUpdatingCreds || (!newEmail && !newPassword)}
