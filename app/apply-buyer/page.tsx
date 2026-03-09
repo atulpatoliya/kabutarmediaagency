@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,8 +61,8 @@ export default function ApplyBuyer() {
           </div>
           <h2 className="text-2xl font-bold mb-3 text-gray-900">Application Received!</h2>
           <p className="text-gray-600 mb-6">Thank you for your interest in joining Kabutar Media as a Media Agency / Buyer. Our team will review your details and contact you shortly to set up your account.</p>
-          <Link href="/">
-            <Button className="bg-primary text-white w-full">Return to Homepage</Button>
+          <Link href="/" className={buttonVariants({ className: "bg-primary text-white w-full" })}>
+            Return to Homepage
           </Link>
         </Card>
       </div>

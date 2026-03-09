@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Loader2, Users } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Users, Eye } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
+import Link from 'next/link';
 
 type RoleTab = 'buyer' | 'reporter';
 type StatusTab = 'approved' | 'rejected' | 'pending';
@@ -21,24 +22,14 @@ export default function AdminUsersDashboard() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id,
-          role,
-          status,
-          created_at,
-          reporter_profiles (
-            full_name,
-            phone,
-            city
-          )
-        `)
-        .neq('role', 'admin')
-        .order('created_at', { ascending: false });
+      const res = await fetch('/api/admin/users', { cache: 'no-store' });
+      const data = await res.json();
 
-      if (error) { console.error('Fetch error:', error); }
-      else if (data) { setUsers(data); }
+      if (!res.ok) {
+        console.error('Fetch error:', data.error);
+      } else {
+        setUsers(data);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -98,8 +89,8 @@ export default function AdminUsersDashboard() {
             key={tab.key}
             onClick={() => setRoleTab(tab.key)}
             className={`px-6 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all flex items-center gap-2 ${roleTab === tab.key
-                ? 'bg-primary text-white border-primary shadow-sm'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-primary/40'
+              ? 'bg-primary text-white border-primary shadow-sm'
+              : 'bg-white text-gray-700 border-gray-200 hover:border-primary/40'
               }`}
           >
             {tab.label}
@@ -119,10 +110,10 @@ export default function AdminUsersDashboard() {
               key={tab.key}
               onClick={() => setStatusTab(tab.key)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px flex items-center gap-2 ${statusTab === tab.key
-                  ? tab.key === 'approved' ? 'border-green-600 text-green-700'
-                    : tab.key === 'rejected' ? 'border-red-600 text-red-700'
-                      : 'border-amber-500 text-amber-700'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? tab.key === 'approved' ? 'border-green-600 text-green-700'
+                  : tab.key === 'rejected' ? 'border-red-600 text-red-700'
+                    : 'border-amber-500 text-amber-700'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
             >
               {tab.key === 'approved' && <CheckCircle className="w-3.5 h-3.5" />}
@@ -157,27 +148,30 @@ export default function AdminUsersDashboard() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                   {filtered.map((user) => {
-                  const profile = user.reporter_profiles?.[0] || {};
+                    const profile = Array.isArray(user.reporter_profiles) ? user.reporter_profiles[0] : (user.reporter_profiles || {});
                   return (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4">
-                        <div className="font-medium text-gray-900">{profile.full_name || 'No Name'}</div>
-                        <div className="text-gray-500 text-xs mt-0.5">ID: {user.id.substring(0, 8)}...</div>
-                        {profile.phone && <div className="text-gray-400 text-xs">📞 {profile.phone}</div>}
-                        {profile.city && <div className="text-gray-400 text-xs">📍 {profile.city}</div>}
+                        <Link href={`/dashboard/admin/users/${user.id}`} className="block hover:bg-gray-50 rounded p-1 -m-1 transition-colors">
+                          <div className="font-medium text-gray-900 group-hover:text-primary">
+                            {profile.full_name || user.metadata?.full_name || 'No Name Found'}
+                          </div>
+                          <div className="text-gray-500 text-xs mt-0.5 font-mono">ID: {user.id.substring(0, 8)}...</div>
+                          {profile.phone && <div className="text-gray-400 text-xs mt-1">📞 {profile.phone}</div>}
+                          {profile.city && <div className="text-gray-400 text-xs">📍 {profile.city}</div>}
+                        </Link>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize ${
-                          user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                        }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize ${user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                          }`}>
                           {user.role}
                         </span>
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${user.status === 'approved' ? 'bg-green-100 text-green-800' :
-                            user.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                          'bg-amber-100 text-amber-800'
-                        }`}>
+                          user.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                            'bg-amber-100 text-amber-800'
+                          }`}>
                           {user.status === 'approved' && <CheckCircle className="w-3 h-3" />}
                           {user.status === 'rejected' && <XCircle className="w-3 h-3" />}
                           {user.status}
@@ -208,9 +202,13 @@ export default function AdminUsersDashboard() {
                               className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 gap-1"
                             >
                               {actionLoading === user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <XCircle className="w-3.5 h-3.5" />}
-                              Reject
                             </Button>
                           )}
+                          <Link href={`/dashboard/admin/users/${user.id}`}>
+                            <Button size="sm" variant="ghost" className="text-gray-600 hover:text-primary">
+                              <Eye className="w-4 h-4 mr-1" /> View
+                            </Button>
+                          </Link>
                         </div>
                       </td>
                     </tr>

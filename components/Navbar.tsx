@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Newspaper, Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
 
@@ -106,8 +106,8 @@ export function Navbar() {
               </div>
             ) : (
               <>
-                  <Link href="/login">
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">Sign In</Button>
+                  <Link href="/login" className={buttonVariants({ size: "sm", className: "bg-primary hover:bg-primary/90 text-white" })}>
+                    Sign In
                   </Link>
               </>
             )}
@@ -138,10 +138,8 @@ export function Navbar() {
             <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
               {user ? (
                 <>
-                  <Link href="/dashboard" onClick={() => setMobileOpen(false)}>
-                    <Button variant="outline" size="sm" className="w-full justify-start">
-                      Dashboard ({profileName})
-                    </Button>
+                  <Link href="/dashboard" className={buttonVariants({ variant: "outline", size: "sm", className: "w-full justify-start" })} onClick={() => setMobileOpen(false)}>
+                    Dashboard ({profileName})
                   </Link>
                   <Button
                     variant="ghost"
@@ -157,8 +155,8 @@ export function Navbar() {
                 </>
               ) : (
                 <div className="flex gap-2">
-                  <Link href="/login" className="flex-1" onClick={() => setMobileOpen(false)}>
-                      <Button size="sm" className="w-full bg-primary text-white">Sign In</Button>
+                    <Link href="/login" className={buttonVariants({ size: "sm", className: "w-full bg-primary text-white flex-1" })} onClick={() => setMobileOpen(false)}>
+                      Sign In
                     </Link>
                 </div>
               )}

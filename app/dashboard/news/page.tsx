@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { PlusCircle, Search, Filter, Loader2, IndianRupee, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabaseClient';
@@ -63,11 +63,9 @@ export default function MyNews() {
           <h1 className="text-2xl font-bold text-gray-900">My News Dashboard</h1>
           <p className="text-gray-600 mt-1">Manage all your submitted and published news stories here</p>
         </div>
-        <Link href="/dashboard/news/create">
-          <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
+        <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
             <PlusCircle className="h-4 w-4" />
-            Submit New Story
-          </Button>
+          Submit New Story
         </Link>
       </div>
 
@@ -138,11 +136,9 @@ export default function MyNews() {
             <p className="text-gray-500 max-w-sm mx-auto mb-6">
               You haven't submitted any news stories yet, or none match your search criteria.
             </p>
-                <Link href="/dashboard/news/create">
-                  <Button className="bg-primary hover:bg-primary/90 text-white gap-2">
+                <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
                     <PlusCircle className="h-4 w-4" />
-                    Submit Your First Story
-                  </Button>
+                  Submit Your First Story
                 </Link>
               </CardContent>
             </Card>

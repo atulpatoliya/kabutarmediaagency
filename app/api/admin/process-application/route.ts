@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { Resend } from 'resend';
 
-// Server-side only – uses service role key which is never exposed to the browser
+// Server-side only – uses service role key
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -16,6 +17,168 @@ function generatePassword(): string {
   return pwd;
 }
 
+// ─── HTML Email Templates ────────────────────────────────────────────────────
+
+function approvalEmailHTML(name: string, email: string, password: string, role: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a56db,#6366f1);padding:40px;text-align:center;">
+              <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">🕊️ Kabutar Media</h1>
+              <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">News Marketplace Platform</p>
+            </td>
+          </tr>
+
+          <!-- Green approved banner -->
+          <tr>
+            <td style="background:#f0fdf4;padding:24px;text-align:center;border-bottom:1px solid #bbf7d0;">
+              <div style="display:inline-block;background:#22c55e;border-radius:50%;padding:12px;margin-bottom:12px;">
+                <span style="font-size:28px;">✅</span>
+              </div>
+              <h2 style="color:#15803d;margin:0;font-size:24px;font-weight:700;">Application Approved!</h2>
+              <p style="color:#166534;margin:8px 0 0;font-size:15px;">Your ${role} account has been activated.</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 40px;">
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Dear <strong>${name}</strong>,
+              </p>
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 28px;">
+                Congratulations! Your application to join <strong>Kabutar Media Agency</strong> as a <strong>${role}</strong> has been reviewed and <strong>approved</strong>. Here are your login credentials:
+              </p>
+
+              <!-- Credentials Box -->
+              <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:24px;margin-bottom:28px;">
+                <h3 style="color:#1e293b;margin:0 0 16px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">🔑 Your Login Details</h3>
+                <table cellpadding="0" cellspacing="0" width="100%">
+                  <tr>
+                    <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                      <span style="color:#64748b;font-size:13px;font-weight:600;">EMAIL ADDRESS</span><br>
+                      <span style="color:#1e293b;font-size:16px;font-weight:700;">${email}</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:10px 0;">
+                      <span style="color:#64748b;font-size:13px;font-weight:600;">PASSWORD</span><br>
+                      <span style="color:#1e293b;font-size:20px;font-weight:700;letter-spacing:2px;font-family:monospace;background:#f1f5f9;padding:4px 12px;border-radius:6px;">${password}</span>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <!-- Login Button -->
+              <div style="text-align:center;margin-bottom:28px;">
+                <a href="https://kabutarmedia.vercel.app/login" style="display:inline-block;background:linear-gradient(135deg,#1a56db,#6366f1);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:50px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
+                  Login to Your Account →
+                </a>
+              </div>
+
+              <p style="color:#6b7280;font-size:13px;background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:0 8px 8px 0;margin:0;">
+                ⚠️ <strong>Security Tip:</strong> Please change your password after your first login for account security.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center;">
+              <p style="color:#6b7280;font-size:13px;margin:0;">Need help? Contact our team:<br>
+                📧 <a href="mailto:kabutarmedia@gmail.com" style="color:#1a56db;text-decoration:none;">kabutarmedia@gmail.com</a> &nbsp;|&nbsp;
+                📞 <a href="tel:+919726530209" style="color:#1a56db;text-decoration:none;">+91 9726530209</a>
+              </p>
+              <p style="color:#9ca3af;font-size:12px;margin:12px 0 0;">© 2025 Kabutar Media Agency. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function rejectionEmailHTML(name: string): string {
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a56db,#6366f1);padding:40px;text-align:center;">
+              <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">🕊️ Kabutar Media</h1>
+              <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">News Marketplace Platform</p>
+            </td>
+          </tr>
+
+          <!-- Red rejection banner -->
+          <tr>
+            <td style="background:#fef2f2;padding:24px;text-align:center;border-bottom:1px solid #fecaca;">
+              <h2 style="color:#dc2626;margin:0;font-size:22px;font-weight:700;">Application Status Update</h2>
+              <p style="color:#991b1b;margin:8px 0 0;font-size:15px;">We are unable to approve your request at this time.</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:36px 40px;">
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Dear <strong>${name}</strong>,
+              </p>
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 20px;">
+                Thank you for your interest in joining <strong>Kabutar Media Agency</strong>. We appreciate the time you took to submit your application.
+              </p>
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 28px;">
+                After careful review, we regret to inform you that we are unable to approve your application at this time. This may be due to eligibility criteria or current platform capacity.
+              </p>
+
+              <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:20px;margin-bottom:28px;text-align:center;">
+                <p style="color:#c2410c;font-size:15px;font-weight:600;margin:0 0 8px;">Have Questions?</p>
+                <p style="color:#9a3412;font-size:14px;margin:0;">Feel free to reach out to our support team and we will be happy to assist you.</p>
+              </div>
+
+              <!-- Contact Box -->
+              <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:12px;padding:20px;">
+                <h3 style="color:#0369a1;margin:0 0 12px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">📞 Contact Our Support Team</h3>
+                <p style="margin:6px 0;color:#374151;font-size:14px;">📧 <a href="mailto:kabutarmedia@gmail.com" style="color:#1a56db;text-decoration:none;font-weight:600;">kabutarmedia@gmail.com</a></p>
+                <p style="margin:6px 0;color:#374151;font-size:14px;">📞 <a href="tel:+919726530209" style="color:#1a56db;text-decoration:none;font-weight:600;">+91 9726530209</a></p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:24px 40px;text-align:center;">
+              <p style="color:#9ca3af;font-size:12px;margin:0;">© 2025 Kabutar Media Agency. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+// ─── Main Handler ────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -24,6 +187,11 @@ export async function POST(request: NextRequest) {
     if (!applicationId || !action) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+
+    // Initialize Resend only when API key is available
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const resend = resendApiKey ? new Resend(resendApiKey) : null;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'Kabutar Media <onboarding@resend.dev>';
 
     // ────────────────────────────────────────────────
     // REJECT flow
@@ -36,16 +204,24 @@ export async function POST(request: NextRequest) {
 
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-      // Send rejection email via Supabase invite trick – instead, just return details
-      // so the admin modal shows the template
+      // Send rejection email if Resend is configured
+      if (resend && email) {
+        try {
+          await resend.emails.send({
+            from: fromEmail,
+            to: [email],
+            subject: 'Your Kabutar Media Application Status Update',
+            html: rejectionEmailHTML(name || 'Applicant')
+          });
+        } catch (emailErr) {
+          console.error('Rejection email error (non-fatal):', emailErr);
+        }
+      }
+
       return NextResponse.json({
         success: true,
         action: 'rejected',
-        emailTemplate: {
-          to: email,
-          subject: 'Your Kabutar Media Application Status',
-          body: `Dear ${name},\n\nThank you for applying to Kabutar Media Agency.\n\nAfter reviewing your application, we regret to inform you that we are unable to approve your request at this time.\n\nIf you have any queries, please contact our support team:\n📧 kabutarmedia@gmail.com\n📞 +91 9726530209\n\nBest regards,\nKabutar Media Team`
-        }
+        emailSent: !!resend
       });
     }
 
@@ -54,12 +230,12 @@ export async function POST(request: NextRequest) {
     // ────────────────────────────────────────────────
     if (action === 'approve') {
       if (!email || !name || !type) {
-        return NextResponse.json({ error: 'Missing email, name, or type for approval' }, { status: 400 });
+        return NextResponse.json({ error: 'Missing email, name, or type' }, { status: 400 });
       }
 
       const generatedPassword = generatePassword();
 
-      // 1. Create auth user (email confirmed immediately)
+      // 1. Create auth user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password: generatedPassword,
@@ -68,7 +244,6 @@ export async function POST(request: NextRequest) {
       });
 
       if (createError) {
-        // If user already exists in auth, just update the app status
         if (createError.message.includes('already been registered')) {
           await supabaseAdmin
             .from('platform_applications')
@@ -77,59 +252,51 @@ export async function POST(request: NextRequest) {
 
           return NextResponse.json({
             success: false,
-            error: `An account with email "${email}" already exists in the system.`
+            error: `Account with email "${email}" already exists.`
           }, { status: 409 });
         }
         return NextResponse.json({ error: createError.message }, { status: 500 });
       }
 
       const userId = newUser.user.id;
-
-      // 2. The handle_new_user trigger creates a public.users row with role='buyer'
-      //    Wait briefly then update the role if reporter
       await new Promise(r => setTimeout(r, 500));
 
       const roleToSet = type === 'reporter' ? 'reporter' : 'buyer';
 
-      const { error: roleError } = await supabaseAdmin
+      await supabaseAdmin
         .from('users')
-        .upsert({
-          id: userId,
-          role: roleToSet,
-          status: 'approved'
-        }, { onConflict: 'id' });
+        .upsert({ id: userId, role: roleToSet, status: 'approved' }, { onConflict: 'id' });
 
-      if (roleError) {
-        console.error('Role update error:', roleError);
-        // Not fatal – trigger may have set buyer role already
-      }
-
-      // 3. Update application status to approved
+      // 2. Update application status
       await supabaseAdmin
         .from('platform_applications')
         .update({ status: 'approved' })
         .eq('id', applicationId);
 
-      // 4. Generate a magic login link so the user can set their own session
-      const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'magiclink',
-        email
-      });
-
-      const loginLink = linkData?.properties?.action_link || `${process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('.supabase.co', '')}/login`;
+      // 3. Send approval email with credentials
+      let emailSent = false;
+      if (resend && email) {
+        try {
+          await resend.emails.send({
+            from: fromEmail,
+            to: [email],
+            subject: `✅ Welcome to Kabutar Media – Your Account is Approved!`,
+            html: approvalEmailHTML(name, email, generatedPassword, roleToSet)
+          });
+          emailSent = true;
+        } catch (emailErr) {
+          console.error('Approval email error (non-fatal):', emailErr);
+        }
+      }
 
       return NextResponse.json({
         success: true,
         action: 'approved',
+        emailSent,
         credentials: {
           email,
           password: generatedPassword,
-          loginLink: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://kabutarmedia.vercel.app'}/login`
-        },
-        emailTemplate: {
-          to: email,
-          subject: 'Welcome to Kabutar Media — Your Account is Approved! ✅',
-          body: `Dear ${name},\n\nCongratulations! Your application to join Kabutar Media Agency has been APPROVED.\n\nHere are your login credentials:\n\n📧 Email: ${email}\n🔑 Password: ${generatedPassword}\n\n👉 Login here: https://kabutarmedia.vercel.app/login\n\nWe recommend you change your password after your first login.\n\nFor any support:\n📧 kabutarmedia@gmail.com\n📞 +91 9726530209\n\nBest regards,\nKabutar Media Team`
+          loginLink: 'https://kabutarmedia.vercel.app/login'
         }
       });
     }

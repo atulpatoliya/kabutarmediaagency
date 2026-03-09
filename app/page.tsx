@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -69,17 +69,13 @@ export default function Home() {
             exclusively and get paid fairly for your journalism.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/apply-buyer">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white px-8 py-6 text-lg">
-                <Search className="mr-2 h-5 w-5" />
-                Join as Buyer
-              </Button>
+            <Link href="/apply-buyer" className={buttonVariants({ size: "lg", className: "bg-primary hover:bg-primary/90 text-white px-8 py-6 text-lg" })}>
+              <Search className="mr-2 h-5 w-5" />
+              Join as Buyer
             </Link>
-            <Link href="/apply-reporter">
-              <Button size="lg" variant="outline" className="border-primary text-primary hover:bg-blue-50 px-8 py-6 text-lg">
-                <Newspaper className="mr-2 h-5 w-5" />
-                Join as Reporter
-              </Button>
+            <Link href="/apply-reporter" className={buttonVariants({ variant: "outline", size: "lg", className: "border-primary text-primary hover:bg-blue-50 px-8 py-6 text-lg" })}>
+              <Newspaper className="mr-2 h-5 w-5" />
+              Join as Reporter
             </Link>
           </div>
         </div>
@@ -185,17 +181,13 @@ export default function Home() {
             Join hundreds of reporters and media agencies already using our platform.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/apply-reporter">
-              <Button size="lg" className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg">
-                <Newspaper className="mr-2 h-5 w-5" />
-                Apply as Reporter
-              </Button>
+            <Link href="/apply-reporter" className={buttonVariants({ size: "lg", className: "bg-primary hover:bg-primary/90 px-8 py-6 text-lg" })}>
+              <Newspaper className="mr-2 h-5 w-5" />
+              Apply as Reporter
             </Link>
-            <Link href="/apply-buyer">
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-gray-900 px-8 py-6 text-lg">
-                Apply as Buyer
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+            <Link href="/apply-buyer" className={buttonVariants({ variant: "outline", size: "lg", className: "border-white text-white hover:bg-white hover:text-gray-900 px-8 py-6 text-lg" })}>
+              Apply as Buyer
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </div>
         </div>

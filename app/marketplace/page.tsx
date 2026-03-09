@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -112,10 +112,8 @@ export default function Marketplace() {
                       {news.price.toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <Link href={`/news/${news.id}`}>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90 text-white">
-                      View & Buy
-                    </Button>
+                  <Link href={`/news/${news.id}`} className={buttonVariants({ size: "sm", className: "bg-primary hover:bg-primary/90 text-white" })}>
+                    View & Buy
                   </Link>
                 </div>
               </CardContent>

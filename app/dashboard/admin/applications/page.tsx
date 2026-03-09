@@ -101,13 +101,15 @@ export default function AdminApplicationsDashboard() {
     archived: 'bg-gray-100 text-gray-700',
   };
 
+  const pendingApplications = applications.filter(a => a.status === 'pending');
+
   const tabItems: { key: TabType; label: string; count: number }[] = [
-    { key: 'all', label: 'All Applications', count: applications.length },
-    { key: 'buyer', label: '🏢 Buyers', count: applications.filter(a => a.type === 'buyer').length },
-    { key: 'reporter', label: '📰 Reporters', count: applications.filter(a => a.type === 'reporter').length },
+    { key: 'all', label: 'All Applications', count: pendingApplications.length },
+    { key: 'buyer', label: '🏢 Buyers', count: pendingApplications.filter(a => a.type === 'buyer').length },
+    { key: 'reporter', label: '📰 Reporters', count: pendingApplications.filter(a => a.type === 'reporter').length },
   ];
 
-  const filtered = activeTab === 'all' ? applications : applications.filter(a => a.type === activeTab);
+  const filtered = activeTab === 'all' ? pendingApplications : pendingApplications.filter(a => a.type === activeTab);
 
   return (
     <div className="space-y-6">
