@@ -1,29 +1,65 @@
-"use client";
+import React, { useState } from 'react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings as SettingsIcon } from 'lucide-react';
+const UserProfileManagement = () => {
+    const [name, setName] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
-export default function Settings() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Account Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your profile, password, and preferences</p>
-      </div>
+    const userEmail = 'user@example.com';  // Display-only field
+    const userMobile = '+1234567890';     // Display-only field
+    const [profileImage, setProfileImage] = useState(null);
 
-      <Card className="shadow-sm">
-        <CardHeader>
-           <CardTitle className="flex items-center gap-2">
-             <SettingsIcon className="h-5 w-5 text-gray-500" />
-             Work in Progress
-           </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600">
-             The settings panel is currently under construction. Please check back later!
-          </p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+    const handleNameChange = (e) => {
+        setName(e.target.value);
+        if (e.target.value.length < 2) {
+            setErrorMessage('Name must be at least 2 characters long.');
+        } else {
+            setErrorMessage('');
+        }
+    };
+
+    const handleImageUpload = (e) => {
+        setProfileImage(e.target.files[0]);
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!errorMessage) {
+            // Handle form submission logic here
+            console.log('Name:', name);
+            console.log('Profile Image:', profileImage);
+        }
+    };
+
+    return (
+        <div>
+            <h1>User Profile Management</h1>
+            <form onSubmit={handleSubmit}>
+                <div>
+                    <label>User Name:</label>
+                    <input
+type="text"
+                    value={name}
+                    onChange={handleNameChange}
+                    required
+                    />
+                    {errorMessage && <span style={{color: 'red'}}>{errorMessage}</span>}
+                </div>
+                <div>
+                    <label>Email:</label>
+                    <input type="email" value={userEmail} readOnly />
+                </div>
+                <div>
+                    <label>Mobile Number:</label>
+                    <input type="tel" value={userMobile} readOnly />
+                </div>
+                <div>
+                    <label>Profile Image:</label>
+                    <input type="file" onChange={handleImageUpload} />
+                </div>
+                <button type="submit">Save</button>
+            </form>
+        </div>
+    );
+};
+
+export default UserProfileManagement;
