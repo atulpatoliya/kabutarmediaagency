@@ -22,9 +22,9 @@ export default function AdminApplicationsDashboard() {
   const [copied, setCopied] = useState('');
 
   const supabase = createClient();
-  if (!supabase) return;
-  if (!supabase) return;
-    const fetchApplications = async () => {
+  if (!supabase) return <div className="p-6 text-sm text-gray-500">Supabase not configured.</div>;
+
+  const fetchApplications = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -33,15 +33,13 @@ export default function AdminApplicationsDashboard() {
         .order('created_at', { ascending: false });
 
       if (error) { console.error('Fetch error:', error); }
-      else if (data) { setApplications(data); }
+      else { setApplications(Array.isArray(data) ? data : []); }
     } catch (err) {
       console.error(err);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  useEffect(() => { fetchApplications(); }, [supabase]);
+  };  useEffect(() => { fetchApplications(); }, [supabase]);
 
   const handleAction = async (app: any, action: 'approve' | 'reject') => {
     setActionLoading(app.id + action);
