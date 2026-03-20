@@ -22,8 +22,9 @@ export default function AdminApplicationsDashboard() {
   const [copied, setCopied] = useState('');
 
   const supabase = createClient();
-
-  const fetchApplications = async () => {
+  if (!supabase) return;
+  if (!supabase) return;
+    const fetchApplications = async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase

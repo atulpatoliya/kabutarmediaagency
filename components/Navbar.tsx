@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { Newspaper, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
 
 const navLinks = [
@@ -24,6 +24,8 @@ export function Navbar() {
   const supabase = createClient();
 
   useEffect(() => {
+    if (!supabase) return;
+
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -39,9 +41,7 @@ export function Navbar() {
         } else if (user.user_metadata?.full_name) {
           setProfileName(user.user_metadata.full_name);
         } else if (user.email) {
-          // Fallback to name part of email
           let namePart = user.email.split('@')[0];
-          // Title case it
           namePart = namePart.charAt(0).toUpperCase() + namePart.slice(1);
           setProfileName(namePart);
         }
@@ -58,6 +58,7 @@ export function Navbar() {
   }, [supabase]);
 
   const handleSignOut = async () => {
+    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     router.push('/login');
@@ -85,8 +86,7 @@ export function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === link.href ? 'text-primary' : 'text-gray-600'
-                  }`}
+                className={`text-sm font-medium transition-colors hover:text-primary ${pathname === link.href ? 'text-primary' : 'text-gray-600'}`}
               >
                 {link.label}
               </Link>
@@ -106,18 +106,15 @@ export function Navbar() {
               </div>
             ) : (
               <>
-                  <Link href="/login" className={buttonVariants({ size: "sm", className: "bg-primary hover:bg-primary/90 text-white" })}>
-                    Sign In
-                  </Link>
+                <Link href="/login" className={buttonVariants({ size: 'sm', className: 'bg-primary hover:bg-primary/90 text-white' })}>
+                  Sign In
+                </Link>
               </>
             )}
           </div>
 
           {/* Mobile toggle */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
+          <button className="md:hidden p-2" onClick={() => setMobileOpen(!mobileOpen)}>
             {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
@@ -138,7 +135,7 @@ export function Navbar() {
             <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
               {user ? (
                 <>
-                  <Link href="/dashboard" className={buttonVariants({ variant: "outline", size: "sm", className: "w-full justify-start" })} onClick={() => setMobileOpen(false)}>
+                  <Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm', className: 'w-full justify-start' })} onClick={() => setMobileOpen(false)}>
                     Dashboard ({profileName})
                   </Link>
                   <Button
@@ -155,9 +152,9 @@ export function Navbar() {
                 </>
               ) : (
                 <div className="flex gap-2">
-                    <Link href="/login" className={buttonVariants({ size: "sm", className: "w-full bg-primary text-white flex-1" })} onClick={() => setMobileOpen(false)}>
-                      Sign In
-                    </Link>
+                  <Link href="/login" className={buttonVariants({ size: 'sm', className: 'w-full bg-primary text-white flex-1' })} onClick={() => setMobileOpen(false)}>
+                    Sign In
+                  </Link>
                 </div>
               )}
             </div>

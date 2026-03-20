@@ -20,10 +20,11 @@ const UserProfileManagement = () => {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const supabase = createClient();
-
-    // Fetch user data on mount
-    useEffect(() => {
-        const fetchUserData = async () => {
+  if (!supabase) return;
+  // Fetch user data on mount
+    useEffect(() => {
+    if (!supabase) return;
+    const fetchUserData = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {

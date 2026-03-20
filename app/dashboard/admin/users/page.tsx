@@ -18,17 +18,19 @@ export default function AdminUsersDashboard() {
   const [statusTab, setStatusTab] = useState<StatusTab>('pending');
 
   const supabase = createClient();
+  if (!supabase) {
+    return <div className="p-6 text-sm text-gray-500">Supabase not configured.</div>;
+  }
 
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
       const res = await fetch('/api/admin/users', { cache: 'no-store' });
       const data = await res.json();
-
       if (!res.ok) {
         console.error('Fetch error:', data.error);
       } else {
-        setUsers(data);
+        setUsers(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error(err);
@@ -40,18 +42,17 @@ export default function AdminUsersDashboard() {
   useEffect(() => { fetchUsers(); }, [supabase]);
 
   const handleUpdateStatus = async (userId: string, newStatus: string) => {
+    if (!supabase) return;
     setActionLoading(userId);
     try {
       const { error } = await supabase
         .from('users')
         .update({ status: newStatus })
         .eq('id', userId);
-
       if (error) {
-        alert('Failed to update user status. Please try again.');
         console.error(error);
+        alert('Failed to update user status. Please try again.');
       } else {
-        // Refetch to ensure we have latest data
         await fetchUsers();
       }
     } catch (err) {
@@ -61,11 +62,11 @@ export default function AdminUsersDashboard() {
     }
   };
 
-  const buyersAll = users.filter(u => u.role === 'buyer');
-  const reportersAll = users.filter(u => u.role === 'reporter');
+  const buyersAll = (Array.isArray(users) ? users : []).filter((u: any) => u && u.role === 'buyer');
+  const reportersAll = (Array.isArray(users) ? users : []).filter((u: any) => u && u.role === 'reporter');
 
   const currentAll = roleTab === 'buyer' ? buyersAll : reportersAll;
-  const filtered = currentAll.filter(u => u.status === statusTab);
+  const filtered = (Array.isArray(currentAll) ? currentAll : []).filter((u: any) => u && u.status === statusTab);
 
   const statusTabs: { key: StatusTab; label: string }[] = [
     { key: 'pending', label: 'Pending' },
@@ -80,20 +81,15 @@ export default function AdminUsersDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">User Management Panel</h1>
           <p className="text-gray-600 mt-1">Manage Reporters and Buyers who have accounts on the platform.</p>
         </div>
-        <Button 
-          onClick={fetchUsers}
-          disabled={isLoading}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '🔄'} Refresh
+        <Button onClick={fetchUsers} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '?'} Refresh
         </Button>
       </div>
 
-      {/* Role Tabs */}
       <div className="flex gap-3">
         {([
-          { key: 'buyer', label: '🏢 Buyers', count: buyersAll.length },
-          { key: 'reporter', label: '📰 Reporters', count: reportersAll.length },
+          { key: 'buyer', label: 'Buyers', count: buyersAll.length },
+          { key: 'reporter', label: 'Reporters', count: reportersAll.length },
         ] as const).map(tab => (
           <button
             key={tab.key}
@@ -111,7 +107,6 @@ export default function AdminUsersDashboard() {
         ))}
       </div>
 
-      {/* Status sub-tabs */}
       <div className="flex gap-1.5 border-b border-gray-200">
         {statusTabs.map(tab => {
           const count = currentAll.filter(u => u.status === tab.key).length;
@@ -129,36 +124,30 @@ export default function AdminUsersDashboard() {
               {tab.key === 'approved' && <CheckCircle className="w-3.5 h-3.5" />}
               {tab.key === 'rejected' && <XCircle className="w-3.5 h-3.5" />}
               {tab.label}
-              <span className="px-1.5 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600 font-bold">{count}</span>
+              <span className="px-1.5 py-0.5 text-xs font-bold rounded-full bg-gray-100 text-gray-600">{count}</span>
             </button>
           );
         })}
       </div>
 
-      {/* Table */}
-      {isLoading ? (
-        <Card className="border-dashed shadow-none">
-          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-gray-500">Loading user database...</p>
-          </CardContent>
-        </Card>
-      ) : filtered.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 border-b border-gray-100">
+      {filtered.length > 0 ? (
+        <div className="grid gap-4">
+          <div className="overflow-hidden rounded-xl border border-gray-200">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-gray-600">
                 <tr>
-                    <th className="px-6 py-4 font-semibold text-gray-900">User Identity</th>
-                    <th className="px-6 py-4 font-semibold text-gray-900">Role</th>
-                  <th className="px-6 py-4 font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-4 font-semibold text-gray-900">Joined</th>
-                    <th className="px-6 py-4 font-semibold text-gray-900 text-center">Action</th>
+                  <th className="px-6 py-3 text-left">User</th>
+                  <th className="px-6 py-3 text-left">Role</th>
+                  <th className="px-6 py-3 text-left">Status</th>
+                  <th className="px-6 py-3 text-left">Joined</th>
+                  <th className="px-6 py-3 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                  {filtered.map((user) => {
-                    const profile = Array.isArray(user.reporter_profiles) ? user.reporter_profiles[0] : (user.reporter_profiles || {});
+              <tbody>
+                {filtered.map((user: any) => {
+                  const profile = (Array.isArray(user?.reporter_profiles) && user.reporter_profiles.length > 0)
+                    ? user.reporter_profiles[0]
+                    : (user?.reporter_profiles || {} as any);
                   return (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4">
@@ -166,29 +155,25 @@ export default function AdminUsersDashboard() {
                           <div className="font-medium text-gray-900 group-hover:text-primary">
                             {profile.full_name || user.metadata?.full_name || 'No Name Found'}
                           </div>
-                          <div className="text-gray-500 text-xs mt-0.5 font-mono">ID: {user.id.substring(0, 8)}...</div>
-                          {profile.phone && <div className="text-gray-400 text-xs mt-1">📞 {profile.phone}</div>}
-                          {profile.city && <div className="text-gray-400 text-xs">📍 {profile.city}</div>}
+                          <div className="text-gray-500 text-xs mt-0.5 font-mono">ID: {String(user.id).substring(0, 8)}...</div>
+                          {profile.phone && <div className="text-gray-400 text-xs mt-1">?? {profile.phone}</div>}
+                          {profile.city && <div className="text-gray-400 text-xs">?? {profile.city}</div>}
                         </Link>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize ${user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                          }`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize ${user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                           {user.role}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${user.status === 'approved' ? 'bg-green-100 text-green-800' :
-                          user.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                            'bg-amber-100 text-amber-800'
-                          }`}>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${user.status === 'approved' ? 'bg-green-100 text-green-800' : user.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
                           {user.status === 'approved' && <CheckCircle className="w-3 h-3" />}
                           {user.status === 'rejected' && <XCircle className="w-3 h-3" />}
                           {user.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-gray-600 text-sm">
-                        {new Date(user.created_at).toLocaleDateString()}
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-center gap-2">
@@ -230,12 +215,12 @@ export default function AdminUsersDashboard() {
         </div>
       ) : (
         <Card className="border-dashed shadow-none">
-              <CardContent className="flex flex-col items-center justify-center p-14 text-center">
-                <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                  <Users className="h-7 w-7 text-gray-400" />
+          <CardContent className="flex flex-col items-center justify-center p-14 text-center">
+            <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <Users className="h-7 w-7 text-gray-400" />
             </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">No {roleTab}s with "{statusTab}" status</h3>
-                <p className="text-gray-400 text-sm">Try switching the status tab or check back later.</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">No {roleTab}s with "{statusTab}" status</h3>
+            <p className="text-gray-400 text-sm">Try switching the status tab or check back later.</p>
           </CardContent>
         </Card>
       )}

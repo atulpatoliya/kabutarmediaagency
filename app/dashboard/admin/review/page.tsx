@@ -14,9 +14,10 @@ export default function AdminReviewDashboard() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   
   const supabase = createClient();
-
-  // Fetch all pending news
-  const fetchPendingNews = async () => {
+  if (!supabase) return;
+  // Fetch all pending news
+    if (!supabase) return;
+    const fetchPendingNews = async () => {
     setIsLoading(true);
     try {
       // Due to the admin RLS policy, simply querying all news where status is pending works.

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder'
-);
+const __SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const __SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+if (!__SUPABASE_URL || !__SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('Server env missing: SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY');
+}
+const supabaseAdmin = createClient(__SUPABASE_URL, __SUPABASE_SERVICE_ROLE_KEY);
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get public users with reporter profiles
     const { data: usersData, error: usersError } = await supabaseAdmin
       .from('users')
       .select(`
@@ -24,13 +25,11 @@ export async function GET(request: NextRequest) {
 
     if (usersError) throw usersError;
 
-    // Get auth users for metadata (names)
     const { data: { users: authUsers }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
     if (authError) throw authError;
 
     const authMap = new Map(authUsers.map(u => [u.id, u]));
 
-    // Fetch reporter profiles separately
     const { data: reporterProfiles } = await supabaseAdmin
       .from('reporter_profiles')
       .select('user_id, full_name, phone, city');

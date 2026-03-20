@@ -77,7 +77,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-gray-800 py-4 text-center text-xs text-gray-500">
-        <p>© {new Date().getFullYear()} Kabutar Media. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Kabutar Media. All rights reserved.</p>
       </div>
     </footer>
   );
