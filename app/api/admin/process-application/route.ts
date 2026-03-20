@@ -265,9 +265,31 @@ export async function POST(request: NextRequest) {
 
       const roleToSet = type === 'reporter' ? 'reporter' : 'buyer';
 
+      // 1a. Create user record
       await supabaseAdmin
         .from('users')
         .upsert({ id: userId, role: roleToSet, status: 'approved' }, { onConflict: 'id' });
+
+      // 1b. If reporter, create reporter_profiles entry
+      if (type === 'reporter') {
+        const { error: profileError } = await supabaseAdmin
+          .from('reporter_profiles')
+          .upsert({
+            user_id: userId,
+            full_name: name,
+            phone: body.phone || 'Not provided',
+            city: body.city || 'Not provided',
+            id_proof_url: body.id_proof_url || '',
+            bank_name: body.bank_name || 'Not provided',
+            account_number: body.account_number || 'Not provided',
+            ifsc_code: body.ifsc_code || 'Not provided',
+            agreement_accepted: true
+          }, { onConflict: 'user_id' });
+
+        if (profileError) {
+          console.error('Error creating reporter profile:', profileError);
+        }
+      }
 
       // 2. Update application status
       await supabaseAdmin

@@ -10,19 +10,14 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get public users
+    // Get public users with reporter profiles
     const { data: usersData, error: usersError } = await supabaseAdmin
       .from('users')
       .select(`
         id,
         role,
         status,
-        created_at,
-        reporter_profiles (
-          full_name,
-          phone,
-          city
-        )
+        created_at
       `)
       .neq('role', 'admin')
       .order('created_at', { ascending: false });
@@ -35,10 +30,20 @@ export async function GET(request: NextRequest) {
 
     const authMap = new Map(authUsers.map(u => [u.id, u]));
 
+    // Fetch reporter profiles separately
+    const { data: reporterProfiles } = await supabaseAdmin
+      .from('reporter_profiles')
+      .select('user_id, full_name, phone, city');
+    
+    const reporterMap = new Map(reporterProfiles?.map(p => [p.user_id, p]) || []);
+
     const combinedData = usersData.map(u => {
       const authUser = authMap.get(u.id);
+      const reporterProfile = reporterMap.get(u.id);
+      
       return {
         ...u,
+        reporter_profiles: reporterProfile ? [reporterProfile] : [],
         metadata: authUser?.user_metadata || {},
         email: authUser?.email || ''
       };

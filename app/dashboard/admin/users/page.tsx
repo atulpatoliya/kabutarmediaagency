@@ -51,7 +51,8 @@ export default function AdminUsersDashboard() {
         alert('Failed to update user status. Please try again.');
         console.error(error);
       } else {
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+        // Refetch to ensure we have latest data
+        await fetchUsers();
       }
     } catch (err) {
       console.error(err);
@@ -74,9 +75,18 @@ export default function AdminUsersDashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">User Management Panel</h1>
-        <p className="text-gray-600 mt-1">Manage Reporters and Buyers who have accounts on the platform.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">User Management Panel</h1>
+          <p className="text-gray-600 mt-1">Manage Reporters and Buyers who have accounts on the platform.</p>
+        </div>
+        <Button 
+          onClick={fetchUsers}
+          disabled={isLoading}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '🔄'} Refresh
+        </Button>
       </div>
 
       {/* Role Tabs */}
