@@ -9,6 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
 
+const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
+
 export default function MasterAdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,7 +63,10 @@ export default function MasterAdminLogin() {
         return;
       }
 
-      if (!userData || userData.role !== 'admin') {
+      const isMasterAdminEmail = normalizedEmail === MASTER_ADMIN_EMAIL;
+      const isAdminByRole = userData?.role === 'admin';
+
+      if (!isAdminByRole && !isMasterAdminEmail) {
         await supabase.auth.signOut();
         setError('Access Denied: You do not have master admin privileges. Contact: kabutarmedia@gmail.com | +91 9726530209');
         return;

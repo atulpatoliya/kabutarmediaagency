@@ -10,7 +10,6 @@ if (!__SUPABASE_URL || !__SUPABASE_SERVICE_ROLE_KEY) {
 }
 
 const supabaseAdmin = createClient(__SUPABASE_URL, __SUPABASE_SERVICE_ROLE_KEY);
-const MASTER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com';
 
 type CategoryInput = {
   id?: string;
@@ -30,6 +29,7 @@ type CategoryRow = {
 
 const PARENT_COLUMN_MISSING_HINT = "Could not find the 'parent_id' column";
 const PARENT_MIGRATION_SQL = `ALTER TABLE public.categories\nADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;`;
+const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
 
 function slugify(value: string) {
   return value
@@ -47,30 +47,16 @@ async function requireAdmin() {
     return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
   }
 
-  let { data: roleRow, error } = await supabase
+  const { data: roleRow, error } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
 
-  if (!error && !roleRow) {
-    const fallbackRole = user.email === MASTER_ADMIN_EMAIL ? 'admin' : 'buyer';
-    const { error: upsertError } = await supabase
-      .from('users')
-      .upsert({ id: user.id, role: fallbackRole, status: 'approved' }, { onConflict: 'id' });
+  const isAdminByRole = roleRow?.role === 'admin';
+  const isMasterAdminEmail = (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
 
-    if (!upsertError) {
-      const refreshed = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle();
-      roleRow = refreshed.data || null;
-      error = refreshed.error || null;
-    }
-  }
-
-  if (error || roleRow?.role !== 'admin') {
+  if (error || (!isAdminByRole && !isMasterAdminEmail)) {
     return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
   }
 

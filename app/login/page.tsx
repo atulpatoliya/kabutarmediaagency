@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Newspaper, Loader2 } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
 
+const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
+
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,7 +44,8 @@ export default function Login() {
         }
 
         // Block admin users from logging in through this route
-        if (userData?.role === 'admin') {
+        const isMasterAdminEmail = (authData.user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+        if (userData?.role === 'admin' || isMasterAdminEmail) {
           await supabase.auth.signOut();
           setError('Master admins must use the Admin Login Portal. Please visit the Admin Login page.');
           return;
