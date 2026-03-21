@@ -7,6 +7,12 @@ import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
+import type { Session } from '@supabase/supabase-js';
+
+type ProfileUpdatedDetail = {
+  fullName?: string;
+  avatarUrl?: string;
+};
 
 const navLinks = [
   { href: '/marketplace', label: 'Marketplace' },
@@ -16,45 +22,93 @@ const navLinks = [
 ];
 
 export function Navbar() {
+  const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profileName, setProfileName] = useState<string>('My Account');
+  const [profileImageUrl, setProfileImageUrl] = useState<string>('');
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
+    setMounted(true);
     if (!supabase) return;
 
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
-        const { data } = await supabase
-          .from('reporter_profiles')
-          .select('full_name')
-          .eq('user_id', user.id)
-          .single();
+    // Always fetches fresh user data from Supabase server (not cached JWT)
+    const resolveProfile = async () => {
+      const { data: { user: freshUser } } = await supabase.auth.getUser();
 
-        if (data?.full_name) {
-          setProfileName(data.full_name);
-        } else if (user.user_metadata?.full_name) {
-          setProfileName(user.user_metadata.full_name);
-        } else if (user.email) {
-          let namePart = user.email.split('@')[0];
-          namePart = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-          setProfileName(namePart);
-        }
+      if (!freshUser) {
+        setUser(null);
+        setProfileName('My Account');
+        setProfileImageUrl('');
+        return;
       }
+
+      setUser(freshUser);
+      setProfileImageUrl(freshUser.user_metadata?.avatar_url || '');
+
+      // Priority 1: user_metadata.full_name (most up-to-date after profile update)
+      const fullName = (freshUser.user_metadata?.full_name as string | undefined)?.trim() || '';
+      if (fullName) {
+        setProfileName(fullName);
+        return;
+      }
+
+      // Priority 2: reporter_profiles table (fallback for reporters without metadata)
+      const { data } = await supabase
+        .from('reporter_profiles')
+        .select('full_name')
+        .eq('user_id', freshUser.id)
+        .maybeSingle();
+
+      if (data?.full_name) {
+        setProfileName(data.full_name);
+        return;
+      }
+
+      // Priority 3: derive from email
+      if (freshUser.email) {
+        const namePart = freshUser.email.split('@')[0];
+        setProfileName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        return;
+      }
+
+      setProfileName('My Account');
     };
 
-    fetchUser();
+    // Single initial fetch using getUser() for fresh server data
+    resolveProfile();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+    // Listen for real auth changes (sign in / sign out / token refresh)
+    // Skip INITIAL_SESSION — already handled by resolveProfile() above
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: Session | null) => {
+      if (event === 'INITIAL_SESSION') return;
+      if (!session) {
+        setUser(null);
+        setProfileName('My Account');
+        setProfileImageUrl('');
+      } else {
+        await resolveProfile();
+      }
     });
 
-    return () => subscription.unsubscribe();
+    // Listen for settings page profile update event
+    const handleProfileUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<ProfileUpdatedDetail>;
+      const nextFullName = customEvent.detail?.fullName?.trim() || '';
+      const nextAvatarUrl = customEvent.detail?.avatarUrl || '';
+      if (nextFullName) setProfileName(nextFullName);
+      if (nextAvatarUrl) setProfileImageUrl(nextAvatarUrl);
+    };
+
+    window.addEventListener('profile-updated', handleProfileUpdated as EventListener);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('profile-updated', handleProfileUpdated as EventListener);
+    };
   }, [supabase]);
 
   const handleSignOut = async () => {
@@ -75,7 +129,7 @@ export function Navbar() {
               alt="Kabutar Media"
               width={40}
               height={40}
-              className="rounded-md object-contain"
+              className="h-10 w-10 rounded-md object-contain"
             />
             <span>Kabutar Media</span>
           </Link>
@@ -93,23 +147,32 @@ export function Navbar() {
             ))}
           </div>
 
-          {/* Auth buttons */}
+          {/* Auth buttons — rendered only after client mounts to prevent hydration mismatch */}
           <div className="hidden md:flex items-center gap-3">
-            {user ? (
+            {!mounted ? null : user ? (
               <div className="flex items-center gap-4">
-                <Link href="/dashboard" className="text-sm font-medium text-gray-700 hover:text-primary transition-colors">
-                  {profileName}
+                <Link href="/dashboard" className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-primary transition-colors">
+                  {profileImageUrl ? (
+                    <img
+                      src={profileImageUrl}
+                      alt={profileName}
+                      className="h-8 w-8 rounded-full object-cover border border-gray-200"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary border border-primary/20">
+                      {profileName.slice(0, 1).toUpperCase()}
+                    </div>
+                  )}
+                  <span>{profileName}</span>
                 </Link>
                 <Button variant="ghost" size="sm" onClick={handleSignOut}>
                   Sign Out
                 </Button>
               </div>
             ) : (
-              <>
-                <Link href="/login" className={buttonVariants({ size: 'sm', className: 'bg-primary hover:bg-primary/90 text-white' })}>
-                  Sign In
-                </Link>
-              </>
+              <Link href="/login" className={buttonVariants({ size: 'sm', className: 'bg-primary hover:bg-primary/90 text-white' })}>
+                Sign In
+              </Link>
             )}
           </div>
 
@@ -133,10 +196,21 @@ export function Navbar() {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-2 border-t border-gray-100 mt-2">
-              {user ? (
+              {!mounted ? null : user ? (
                 <>
-                  <Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm', className: 'w-full justify-start' })} onClick={() => setMobileOpen(false)}>
-                    Dashboard ({profileName})
+                  <Link href="/dashboard" className={buttonVariants({ variant: 'outline', size: 'sm', className: 'w-full justify-start gap-2' })} onClick={() => setMobileOpen(false)}>
+                    {profileImageUrl ? (
+                      <img
+                        src={profileImageUrl}
+                        alt={profileName}
+                        className="h-6 w-6 rounded-full object-cover border border-gray-200"
+                      />
+                    ) : (
+                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary border border-primary/20">
+                        {profileName.slice(0, 1).toUpperCase()}
+                      </div>
+                    )}
+                    <span>Dashboard ({profileName})</span>
                   </Link>
                   <Button
                     variant="ghost"

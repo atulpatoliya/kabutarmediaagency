@@ -23,15 +23,27 @@ export default function MasterAdminLogin() {
     setIsLoading(true);
 
     try {
+      if (!supabase) {
+        setError('Login service is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.');
+        return;
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const normalizedPassword = password.trim();
+
+      if (!normalizedEmail || !normalizedPassword) {
+        setError('Please enter both email and password.');
+        return;
+      }
+
       // Step 1: Sign in with email/password
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ 
-        email, 
-        password 
+        email: normalizedEmail,
+        password: normalizedPassword
       });
 
       if (authError) {
-        setError('Invalid login credentials. Please check your email and password.');
-        setIsLoading(false);
+        setError('Incorrect email or password. Please check your credentials and try again.');
         return;
       }
 
@@ -69,16 +81,23 @@ export default function MasterAdminLogin() {
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center py-12 px-4">
-      <Card className="w-full max-w-md shadow-2xl border-gray-800 bg-gray-950 text-white">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-14 h-14 bg-red-600/20 border border-red-500 rounded-2xl flex items-center justify-center">
-              <ShieldCheck className="h-7 w-7 text-red-500" />
+      <div className="w-full max-w-md space-y-4">
+        {/* Warning Banner */}
+        <div className="bg-yellow-950/50 border border-yellow-800 text-yellow-200 px-4 py-3 rounded-lg text-sm">
+          <p className="font-semibold mb-1">⚠️ Restricted Access</p>
+          <p>This portal is exclusively for Master Admin accounts. Regular users must use the regular Sign In page.</p>
+        </div>
+
+        <Card className="shadow-2xl border-gray-800 bg-gray-950 text-white">
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 bg-red-600/20 border border-red-500 rounded-2xl flex items-center justify-center">
+                <ShieldCheck className="h-7 w-7 text-red-500" />
+              </div>
             </div>
-          </div>
-          <CardTitle className="text-2xl font-bold tracking-tight text-white">Master Admin Portal</CardTitle>
-          <CardDescription className="text-gray-400">Restricted access area.</CardDescription>
-        </CardHeader>
+            <CardTitle className="text-2xl font-bold tracking-tight text-white">Master Admin Portal</CardTitle>
+            <CardDescription className="text-gray-400">Secure authentication required.</CardDescription>
+          </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-5">
             {error && (
@@ -118,6 +137,7 @@ export default function MasterAdminLogin() {
           </form>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

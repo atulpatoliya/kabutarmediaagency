@@ -13,6 +13,7 @@ const UserProfileManagement = () => {
     const [errorMessage, setErrorMessage] = useState('');
     const [profileImage, setProfileImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
+    const [initialPreviewUrl, setInitialPreviewUrl] = useState<string>('');
     const [userEmail, setUserEmail] = useState('');
     const [userMobile, setUserMobile] = useState('');
     const [isLoading, setIsLoading] = useState(true);
@@ -20,36 +21,35 @@ const UserProfileManagement = () => {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
     const supabase = createClient();
-  if (!supabase) return;
-  // Fetch user data on mount
-    useEffect(() => {
-    if (!supabase) return;
-    const fetchUserData = async () => {
+
+    // Fetch user data on mount
+    useEffect(() => {
+        if (!supabase) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchUserData = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
                 if (user) {
                     setCurrentUserId(user.id);
                     setUserEmail(user.email || '');
+                    const fullNameFromMeta = (user.user_metadata?.full_name as string | undefined)?.trim();
+                    if (fullNameFromMeta) {
+                        setName(fullNameFromMeta);
+                        setInitialName(fullNameFromMeta);
+                    }
+
+                    const avatarUrl = (user.user_metadata?.avatar_url as string | undefined) || '';
+                    if (avatarUrl) {
+                        setPreviewUrl(avatarUrl);
+                        setInitialPreviewUrl(avatarUrl);
+                    }
                     
                     // Fetch user phone from metadata or database
                     const phone = user.user_metadata?.phone || user.phone || '+1234567890';
                     setUserMobile(phone);
-
-                    // Fetch user profile
-                    const { data: profile } = await supabase
-                        .from('reporter_profiles')
-                        .select('full_name, profile_image')
-                        .eq('user_id', user.id)
-                        .single();
-
-                    if (profile?.full_name) {
-                        setName(profile.full_name);
-                        setInitialName(profile.full_name);
-                    }
-
-                    if (profile?.profile_image) {
-                        setPreviewUrl(profile.profile_image);
-                    }
                 }
             } catch (error) {
                 console.error('Error fetching user data:', error);
@@ -59,10 +59,14 @@ const UserProfileManagement = () => {
         };
 
         fetchUserData();
-    }, []);
+    }, [supabase]);
 
     // Check if there are unsaved changes
-    const hasChanges = name !== initialName || profileImage !== null;
+    const normalizedName = name.trim();
+    const hasNameChanges = normalizedName !== initialName.trim();
+    const hasImageChanges = profileImage !== null;
+    const hasChanges = hasNameChanges || hasImageChanges;
+    const canSubmit = hasChanges && !isSaving && !errorMessage && (normalizedName.length >= 2 || hasImageChanges);
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -88,34 +92,58 @@ const UserProfileManagement = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!errorMessage && name.length >= 2 && currentUserId && hasChanges) {
-            setIsSaving(true);
-            try {
-                // Update full_name in database
-                const { error } = await supabase
-                    .from('reporter_profiles')
-                    .update({ full_name: name })
-                    .eq('user_id', currentUserId);
+        if (errorMessage || !currentUserId || !hasChanges) {
+            return;
+        }
 
-                if (error) {
-                    throw error;
-                }
+        if (normalizedName.length > 0 && normalizedName.length < 2 && !hasImageChanges) {
+            setErrorMessage('Name must be at least 2 characters long.');
+            return;
+        }
 
-                setInitialName(name);
-                setProfileImage(null);
-                setSaveSuccess(true);
-                
-                // Reset success message after 2 seconds
-                setTimeout(() => setSaveSuccess(false), 2000);
-
-                // Trigger a page reload to update the navbar
-                window.location.href = '/dashboard/settings';
-            } catch (error) {
-                console.error('Error saving profile:', error);
-                setErrorMessage('Failed to save profile. Please try again.');
-            } finally {
-                setIsSaving(false);
+        setIsSaving(true);
+        try {
+            const formData = new FormData();
+            if (normalizedName.length >= 2) {
+                formData.append('name', normalizedName);
             }
+            if (profileImage) {
+                formData.append('image', profileImage);
+            }
+
+            const response = await fetch('/api/profile/update', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+            if (!response.ok) {
+                throw new Error(result?.error || 'Profile update failed.');
+            }
+
+            const updatedName = (result?.fullName as string | undefined) || normalizedName;
+            const updatedAvatarUrl = (result?.avatarUrl as string | undefined) || initialPreviewUrl;
+
+            setName(updatedName || '');
+            setInitialName(updatedName || '');
+            setProfileImage(null);
+            setInitialPreviewUrl(updatedAvatarUrl || '');
+            setPreviewUrl(updatedAvatarUrl || '');
+            window.dispatchEvent(new CustomEvent('profile-updated', {
+                detail: {
+                    fullName: updatedName || '',
+                    avatarUrl: updatedAvatarUrl || '',
+                },
+            }));
+            setSaveSuccess(true);
+
+            // Reset success message after 2 seconds
+            setTimeout(() => setSaveSuccess(false), 2000);
+        } catch (error) {
+            console.error('Error saving profile:', error);
+            setErrorMessage('Failed to save profile. Please try again.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -123,12 +151,18 @@ const UserProfileManagement = () => {
         setName(initialName);
         setProfileImage(null);
         setErrorMessage('');
-        if (previewUrl && !profileImage) {
-            // Keep the original preview
-        } else {
-            setPreviewUrl('');
-        }
+        setPreviewUrl(initialPreviewUrl);
     };
+
+    if (!supabase) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6">
+                <div className="max-w-2xl">
+                    <p className="text-red-600">Supabase is not configured. Please check environment variables.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gray-50 p-6">
@@ -241,9 +275,9 @@ const UserProfileManagement = () => {
                         <div className="flex gap-3 pt-4">
                             <Button
                                 type="submit"
-                                disabled={!hasChanges || isSaving || name.length < 2}
+                                disabled={!canSubmit}
                                 className={`flex-1 flex items-center justify-center gap-2 ${
-                                    !hasChanges || isSaving || name.length < 2
+                                    !canSubmit
                                         ? 'bg-gray-400 cursor-not-allowed'
                                         : 'bg-blue-600 hover:bg-blue-700'
                                 }`}

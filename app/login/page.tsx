@@ -23,10 +23,31 @@ export default function Login() {
     setError('');
     setIsLoading(true);
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) {
         setError('Invalid login credentials. Please contact support at support@kabutarmedia.com for assistance.');
       } else {
+        // Check user role
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', authData.user.id)
+          .maybeSingle();
+
+        if (userError) {
+          console.error('Role check error:', userError);
+          await supabase.auth.signOut();
+          setError('Could not verify user role. Please try again.');
+          return;
+        }
+
+        // Block admin users from logging in through this route
+        if (userData?.role === 'admin') {
+          await supabase.auth.signOut();
+          setError('Master admins must use the Admin Login Portal. Please visit the Admin Login page.');
+          return;
+        }
+
         router.push('/dashboard');
       }
     } catch {

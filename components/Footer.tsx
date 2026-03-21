@@ -14,7 +14,7 @@ export function Footer() {
               alt="Kabutar Media"
               width={40}
               height={40}
-              className="rounded-md object-contain"
+              className="h-10 w-10 rounded-md object-contain"
             />
             <span className="text-white font-bold text-xl">Kabutar Media</span>
           </div>

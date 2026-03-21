@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, Loader2, IndianRupee, Clock, Search, MapPin, AlignLeft } from 'lucide-react';
@@ -12,12 +13,31 @@ export default function AdminReviewDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   
   const supabase = createClient();
-  if (!supabase) return;
-  // Fetch all pending news
-    if (!supabase) return;
-    const fetchPendingNews = async () => {
+  const router = useRouter();
+
+  useEffect(() => {
+    async function checkAdminAccess() {
+      if (!supabase) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+      if (data?.role !== 'admin') {
+        router.push('/dashboard');
+        return;
+      }
+      setIsAuthorized(true);
+    }
+    checkAdminAccess();
+  }, [supabase, router]);
+
+  const fetchPendingNews = async () => {
     setIsLoading(true);
     try {
       // Due to the admin RLS policy, simply querying all news where status is pending works.
@@ -51,8 +71,30 @@ export default function AdminReviewDashboard() {
   };
 
   useEffect(() => {
+    if (!supabase || !isAuthorized) return;
     fetchPendingNews();
-  }, [supabase]);
+  }, [supabase, isAuthorized]);
+
+  if (!isAuthorized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="mt-4 text-gray-600">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!supabase) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-600">Supabase is not configured.</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleUpdateStatus = async (newsId: string, newStatus: string) => {
     setActionLoading(newsId);

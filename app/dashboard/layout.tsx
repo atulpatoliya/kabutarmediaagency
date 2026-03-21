@@ -37,14 +37,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     async function checkRole() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
       const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
-      if (data?.role === 'admin') {
+      const isUserAdmin = data?.role === 'admin';
+      
+      if (isUserAdmin) {
         setIsAdmin(true);
+      } else {
+        // Non-admin user trying to access admin route
+        if (pathname.startsWith('/dashboard/admin')) {
+          router.push('/dashboard');
+        }
       }
     }
     checkRole();
-  }, [supabase]);
+  }, [supabase, pathname, router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
