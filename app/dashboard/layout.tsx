@@ -14,7 +14,8 @@ import {
   Bell,
   ShieldCheck,
   Users,
-  Inbox
+  Inbox,
+  Tags
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
@@ -26,6 +27,8 @@ const navItems = [
   { href: '/dashboard/purchases', label: 'Purchases', icon: ShoppingCart },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
+
+const MASTER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,7 +45,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         return;
       }
 
-      const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+      let { data } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      // If schema was re-run, old auth users may not exist in public.users.
+      // Recreate role row so admin pages stop failing with 406 errors.
+      if (!data) {
+        const fallbackRole = user.email === MASTER_ADMIN_EMAIL ? 'admin' : 'buyer';
+        const { error: insertError } = await supabase
+          .from('users')
+          .upsert({ id: user.id, role: fallbackRole, status: 'approved' }, { onConflict: 'id' });
+
+        if (!insertError) {
+          const refreshed = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          data = refreshed.data || null;
+        }
+      }
+
       const isUserAdmin = data?.role === 'admin';
       
       if (isUserAdmin) {
@@ -73,7 +99,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <span className="text-sm">NewsMarket</span>
           </Link>
-          <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
+          <button className="lg:hidden" title="Close sidebar" onClick={() => setSidebarOpen(false)}>
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -136,6 +162,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <Inbox className="h-4 w-4" />
                 View Applications
               </Link>
+              <Link
+                href="/dashboard/admin/news-settings"
+                onClick={() => setSidebarOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mt-1 ${pathname === '/dashboard/admin/news-settings'
+                  ? 'bg-red-50 text-red-700'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+              >
+                <Tags className="h-4 w-4" />
+                News Settings
+              </Link>
             </>
           )}
         </nav>
@@ -166,13 +203,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
           <button
             className="lg:hidden p-2"
+            title="Open sidebar"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex-1 lg:pl-0" />
           <div className="flex items-center gap-3">
-            <button className="relative p-2 text-gray-500 hover:text-gray-700">
+            <button className="relative p-2 text-gray-500 hover:text-gray-700" title="Notifications">
               <Bell className="h-5 w-5" />
             </button>
             <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-primary text-sm font-bold">

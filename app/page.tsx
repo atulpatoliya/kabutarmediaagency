@@ -14,6 +14,7 @@ import {
   Star,
   Zap
 } from 'lucide-react';
+import { createClient } from '@/lib/supabaseServer';
 
 const features = [
   {
@@ -48,9 +49,31 @@ const features = [
   },
 ];
 
-const categories = ['Politics', 'Business', 'Technology', 'Sports', 'Entertainment', 'Health', 'World', 'Crime'];
+export default async function Home() {
+  const supabase = await createClient();
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('id, name, slug, parent_id')
+    .eq('status', true)
+    .order('sort_order', { ascending: true })
+    .order('name', { ascending: true });
 
-export default function Home() {
+  const categoryRows = categories || [];
+  const byId = new Map(categoryRows.map((category) => [category.id, category]));
+  const labelFor = (category: { id: string; name: string; parent_id: string | null }) => {
+    const parts: string[] = [];
+    let current: { id: string; name: string; parent_id: string | null } | undefined = category;
+    let guard = 0;
+
+    while (current && guard < 10) {
+      parts.unshift(current.name);
+      current = current.parent_id ? byId.get(current.parent_id) : undefined;
+      guard += 1;
+    }
+
+    return parts.join(' > ');
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -139,13 +162,13 @@ export default function Home() {
             <p className="text-gray-600">News stories across all major beats and sectors.</p>
           </div>
           <div className="flex flex-wrap gap-3 justify-center">
-            {categories.map((cat) => (
-              <Link key={cat} href={`/marketplace?category=${cat.toLowerCase()}`}>
+            {categoryRows.map((cat) => (
+              <Link key={cat.slug} href={`/marketplace?category=${cat.slug}`}>
                 <Badge
                   variant="outline"
                   className="px-5 py-2 text-sm cursor-pointer hover:bg-primary hover:text-white hover:border-primary transition-colors"
                 >
-                  {cat}
+                  {labelFor(cat)}
                 </Badge>
               </Link>
             ))}

@@ -14,6 +14,7 @@ DROP TABLE IF EXISTS public.news CASCADE;
 DROP TABLE IF EXISTS public.categories CASCADE;
 DROP TABLE IF EXISTS public.reporter_profiles CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
+DROP TABLE IF EXISTS public.platform_applications CASCADE;
 
 DROP TYPE IF EXISTS user_role CASCADE;
 DROP TYPE IF EXISTS user_status CASCADE;
@@ -53,8 +54,21 @@ CREATE TABLE public.categories (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE,
-    status BOOLEAN NOT NULL DEFAULT TRUE
+    status BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  parent_id UUID REFERENCES public.categories(id) ON DELETE SET NULL
 );
+
+INSERT INTO public.categories (name, slug, status, sort_order)
+VALUES
+  ('Politics', 'politics', TRUE, 1),
+  ('Business', 'business', TRUE, 2),
+  ('Technology', 'technology', TRUE, 3),
+  ('Sports', 'sports', TRUE, 4),
+  ('Entertainment', 'entertainment', TRUE, 5),
+  ('Health', 'health', TRUE, 6),
+  ('World', 'world', TRUE, 7),
+  ('Crime', 'crime', TRUE, 8);
 
 -- 6. News Table
 CREATE TABLE public.news (
@@ -238,5 +252,53 @@ CREATE TABLE IF NOT EXISTS public.platform_applications (
 );
 
 ALTER TABLE public.platform_applications ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Anyone can insert applications" ON public.platform_applications;
 CREATE POLICY "Anyone can insert applications" ON public.platform_applications FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Admins can view and update applications" ON public.platform_applications;
 CREATE POLICY "Admins can view and update applications" ON public.platform_applications USING (get_user_role(auth.uid()) = 'admin');
+
+-- 12. Existing Project Migration: Ordered Categories for News Settings
+-- Run this block on an already-created project to support the master admin
+-- category management screen with add/remove/reorder behavior.
+
+ALTER TABLE public.categories
+ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE public.categories
+ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;
+
+WITH ordered_categories AS (
+  SELECT id,
+       ROW_NUMBER() OVER (
+         ORDER BY
+           CASE WHEN sort_order > 0 THEN sort_order ELSE 999999 END,
+           name ASC
+       ) AS new_sort_order
+  FROM public.categories
+)
+UPDATE public.categories
+SET sort_order = ordered_categories.new_sort_order
+FROM ordered_categories
+WHERE public.categories.id = ordered_categories.id;
+
+INSERT INTO public.categories (name, slug, status, sort_order)
+VALUES
+  ('Politics', 'politics', TRUE, 1),
+  ('Business', 'business', TRUE, 2),
+  ('Technology', 'technology', TRUE, 3),
+  ('Sports', 'sports', TRUE, 4),
+  ('Entertainment', 'entertainment', TRUE, 5),
+  ('Health', 'health', TRUE, 6),
+  ('World', 'world', TRUE, 7),
+  ('Crime', 'crime', TRUE, 8)
+ON CONFLICT (slug) DO NOTHING;
+
+WITH ordered_categories AS (
+  SELECT id,
+       ROW_NUMBER() OVER (ORDER BY sort_order ASC, name ASC) AS new_sort_order
+  FROM public.categories
+)
+UPDATE public.categories
+SET sort_order = ordered_categories.new_sort_order
+FROM ordered_categories
+WHERE public.categories.id = ordered_categories.id;

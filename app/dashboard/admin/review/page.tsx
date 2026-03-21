@@ -8,6 +8,8 @@ import { CheckCircle, XCircle, Loader2, IndianRupee, Clock, Search, MapPin, Alig
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabaseClient';
 
+const MASTER_ADMIN_EMAIL = process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com';
+
 export default function AdminReviewDashboard() {
   const [pendingNews, setPendingNews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -27,7 +29,28 @@ export default function AdminReviewDashboard() {
         return;
       }
 
-      const { data } = await supabase.from('users').select('role').eq('id', user.id).single();
+      let { data } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (!data) {
+        const fallbackRole = user.email === MASTER_ADMIN_EMAIL ? 'admin' : 'buyer';
+        const { error: insertError } = await supabase
+          .from('users')
+          .upsert({ id: user.id, role: fallbackRole, status: 'approved' }, { onConflict: 'id' });
+
+        if (!insertError) {
+          const refreshed = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .maybeSingle();
+          data = refreshed.data || null;
+        }
+      }
+
       if (data?.role !== 'admin') {
         router.push('/dashboard');
         return;

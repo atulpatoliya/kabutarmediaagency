@@ -14,7 +14,7 @@ export default function CreateNewsStory() {
   const router = useRouter();
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
-  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string, name: string, parent_id: string | null, sort_order: number }[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -34,11 +34,31 @@ export default function CreateNewsStory() {
 
   useEffect(() => {
     async function fetchCategories() {
-      const { data } = await supabase.from('categories').select('id, name');
+      const { data } = await supabase
+        .from('categories')
+        .select('id, name, parent_id, sort_order')
+        .eq('status', true)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true });
       if (data) setCategories(data);
     }
     fetchCategories();
   }, [supabase]);
+
+  const getPathLabel = (categoryId: string) => {
+    const byId = new Map(categories.map((category) => [category.id, category]));
+    const labels: string[] = [];
+    let current = byId.get(categoryId);
+    let guard = 0;
+
+    while (current && guard < 10) {
+      labels.unshift(current.name);
+      current = current.parent_id ? byId.get(current.parent_id) : undefined;
+      guard += 1;
+    }
+
+    return labels.join(' > ');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,16 +183,21 @@ export default function CreateNewsStory() {
                   <select
                     id="categoryId"
                     name="categoryId"
+                    title="Category"
                     value={formData.categoryId}
                     onChange={handleChange}
                     className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mt-1"
+                    disabled={categories.length === 0}
                     required
                   >
-                    <option value="" disabled>Select a category</option>
+                    <option value="" disabled>{categories.length === 0 ? 'No categories available' : 'Select a category'}</option>
                     {categories.map((cat) => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      <option key={cat.id} value={cat.id}>{getPathLabel(cat.id)}</option>
                     ))}
                   </select>
+                  {categories.length === 0 && (
+                    <p className="mt-2 text-xs text-red-500">Master admin must add categories in News Settings before reporters can submit stories.</p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="state">State</Label>

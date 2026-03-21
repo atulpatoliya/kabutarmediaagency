@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Eye, Clock, TrendingUp, IndianRupee } from 'lucide-react';
+import { createClient } from '@/lib/supabaseClient';
 
 const mockNews = [
   { id: '1', title: 'Major Political Development in Delhi', category: 'Politics', price: 25000, views: 1200, timeAgo: '2 hours ago', exclusive: true },
@@ -17,11 +18,51 @@ const mockNews = [
   { id: '6', title: 'Bollywood Celebrity in Legal Trouble', category: 'Entertainment', price: 15000, views: 3200, timeAgo: '30 minutes ago', exclusive: true },
 ];
 
-const categories = ['All', 'Politics', 'Technology', 'Business', 'Sports', 'Entertainment', 'Health', 'Crime', 'World'];
-
 export default function Marketplace() {
+  const supabase = createClient();
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [categories, setCategories] = useState<{ name: string; label: string }[]>([{ name: 'All', label: 'All' }]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    async function fetchCategories() {
+      const { data } = await supabase
+        .from('categories')
+        .select('id, name, parent_id')
+        .eq('status', true)
+        .order('sort_order', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (!data) return;
+
+      type CategoryRow = { id: string; name: string; parent_id: string | null };
+      const rows = data as CategoryRow[];
+      const byId = new Map<string, CategoryRow>(rows.map((category) => [category.id, category]));
+      const labelFor = (category: CategoryRow) => {
+        const parts: string[] = [];
+        let current: CategoryRow | undefined = category;
+        let guard = 0;
+        while (current && guard < 10) {
+          parts.unshift(current.name);
+          current = current.parent_id ? byId.get(current.parent_id) : undefined;
+          guard += 1;
+        }
+        return parts.join(' > ');
+      };
+
+      setCategories([
+        { name: 'All', label: 'All' },
+        ...rows.map((category) => ({
+          name: category.name,
+          label: labelFor(category),
+        })),
+      ]);
+    }
+
+    fetchCategories();
+  }, [supabase]);
 
   const filtered = mockNews.filter((n) => {
     const matchesSearch = n.title.toLowerCase().includes(search.toLowerCase());
@@ -61,14 +102,14 @@ export default function Marketplace() {
         <div className="flex gap-2 flex-wrap mb-8">
           {categories.map((cat) => (
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === cat
+              key={cat.label}
+              onClick={() => setSelectedCategory(cat.name)}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === cat.name
                   ? 'bg-primary text-white'
                   : 'bg-white border border-gray-200 text-gray-600 hover:border-primary hover:text-primary'
                 }`}
             >
-              {cat}
+              {cat.label}
             </button>
           ))}
         </div>
