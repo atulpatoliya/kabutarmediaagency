@@ -179,10 +179,12 @@ SELECT
   au.id,
   CASE
     WHEN lower(coalesce(au.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::user_role
+    WHEN rp.user_id IS NOT NULL THEN 'reporter'::user_role
     ELSE 'buyer'::user_role
   END,
   'approved'::user_status
 FROM auth.users au
+LEFT JOIN public.reporter_profiles rp ON rp.user_id = au.id
 LEFT JOIN public.users pu ON pu.id = au.id
 WHERE pu.id IS NULL;
 
@@ -336,12 +338,20 @@ SELECT
   au.id,
   CASE
     WHEN lower(coalesce(au.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::user_role
+    WHEN rp.user_id IS NOT NULL THEN 'reporter'::user_role
     ELSE 'buyer'::user_role
   END,
   'approved'::user_status
 FROM auth.users au
+LEFT JOIN public.reporter_profiles rp ON rp.user_id = au.id
 LEFT JOIN public.users pu ON pu.id = au.id
 WHERE pu.id IS NULL;
+
+UPDATE public.users u
+SET role = 'reporter'::user_role
+FROM public.reporter_profiles rp
+WHERE rp.user_id = u.id
+  AND u.role <> 'admin'::user_role;
 
 UPDATE public.users
 SET role = 'admin'::user_role,

@@ -267,6 +267,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Missing email, name, or type' }, { status: 400 });
       }
 
+      const roleToSet = type === 'reporter' ? 'reporter' : 'buyer';
       const generatedPassword = generatePassword();
 
       // 1. Create auth user
@@ -279,6 +280,42 @@ export async function POST(request: NextRequest) {
 
       if (createError) {
         if (createError.message.includes('already been registered')) {
+          // Existing auth user: still enforce role/profile based on approved application.
+          const { data: existingAuthUsersData, error: existingAuthUsersError } = await supabaseAdmin.auth.admin.listUsers();
+          if (existingAuthUsersError) {
+            return NextResponse.json({ error: existingAuthUsersError.message }, { status: 500 });
+          }
+
+          const existingAuthUser = (existingAuthUsersData.users || []).find(
+            (u) => (u.email || '').toLowerCase() === String(email).toLowerCase()
+          );
+
+          if (existingAuthUser) {
+            await supabaseAdmin
+              .from('users')
+              .upsert({ id: existingAuthUser.id, role: roleToSet, status: 'approved' }, { onConflict: 'id' });
+
+            if (type === 'reporter') {
+              const { error: profileError } = await supabaseAdmin
+                .from('reporter_profiles')
+                .upsert({
+                  user_id: existingAuthUser.id,
+                  full_name: name,
+                  phone: body.phone || 'Not provided',
+                  city: body.city || 'Not provided',
+                  id_proof_url: body.id_proof_url || '',
+                  bank_name: body.bank_name || 'Not provided',
+                  account_number: body.account_number || 'Not provided',
+                  ifsc_code: body.ifsc_code || 'Not provided',
+                  agreement_accepted: true
+                }, { onConflict: 'user_id' });
+
+              if (profileError) {
+                console.error('Error upserting reporter profile for existing auth user:', profileError);
+              }
+            }
+          }
+
           await supabaseAdmin
             .from('platform_applications')
             .update({ status: 'approved' })
@@ -296,8 +333,6 @@ export async function POST(request: NextRequest) {
 
       const userId = newUser.user.id;
       await new Promise(r => setTimeout(r, 500));
-
-      const roleToSet = type === 'reporter' ? 'reporter' : 'buyer';
 
       // 1a. Create user record
       await supabaseAdmin

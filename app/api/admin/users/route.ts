@@ -75,6 +75,24 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // If a user has reporter profile data, ensure role is reporter.
+    const { data: reporterRoleRows, error: reporterRoleRowsError } = await supabaseAdmin
+      .from('reporter_profiles')
+      .select('user_id');
+
+    if (reporterRoleRowsError) throw reporterRoleRowsError;
+
+    const reporterIds = (reporterRoleRows || []).map((r) => r.user_id);
+    if (reporterIds.length > 0) {
+      const { error: promoteReporterError } = await supabaseAdmin
+        .from('users')
+        .update({ role: 'reporter' })
+        .in('id', reporterIds)
+        .neq('role', 'admin');
+
+      if (promoteReporterError) throw promoteReporterError;
+    }
+
     const { data: usersData, error: usersError } = await supabaseAdmin
       .from('users')
       .select(`
