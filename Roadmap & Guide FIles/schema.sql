@@ -197,6 +197,17 @@ WHERE id IN (
   WHERE lower(coalesce(email, '')) = lower('directoratulpatoliya@gmail.com')
 );
 
+UPDATE public.users u
+SET role = 'reporter'::user_role,
+    status = 'approved'::user_status
+FROM auth.users au
+JOIN public.platform_applications pa
+  ON lower(coalesce(pa.email, '')) = lower(coalesce(au.email, ''))
+WHERE u.id = au.id
+  AND pa.type = 'reporter'
+  AND pa.status = 'approved'
+  AND u.role <> 'admin'::user_role;
+
 -- Reporter Profiles Policies
 DROP POLICY IF EXISTS "Reporters can read own profile" ON public.reporter_profiles;
 CREATE POLICY "Reporters can read own profile" ON public.reporter_profiles FOR SELECT USING (auth.uid() = user_id);
@@ -361,6 +372,17 @@ WHERE id IN (
   FROM auth.users
   WHERE lower(coalesce(email, '')) = lower('directoratulpatoliya@gmail.com')
 );
+
+UPDATE public.users u
+SET role = 'reporter'::user_role,
+    status = 'approved'::user_status
+FROM auth.users au
+JOIN public.platform_applications pa
+  ON lower(coalesce(pa.email, '')) = lower(coalesce(au.email, ''))
+WHERE u.id = au.id
+  AND pa.type = 'reporter'
+  AND pa.status = 'approved'
+  AND u.role <> 'admin'::user_role;
 
 WITH ordered_categories AS (
   SELECT id,

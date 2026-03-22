@@ -93,6 +93,36 @@ export async function GET(request: NextRequest) {
       if (promoteReporterError) throw promoteReporterError;
     }
 
+    // Also heal historical data where reporter profile was never inserted,
+    // but application type was approved as reporter.
+    const { data: approvedReporterApps, error: approvedReporterAppsError } = await supabaseAdmin
+      .from('platform_applications')
+      .select('email')
+      .eq('type', 'reporter')
+      .eq('status', 'approved');
+
+    if (approvedReporterAppsError) throw approvedReporterAppsError;
+
+    const approvedReporterEmailSet = new Set(
+      (approvedReporterApps || [])
+        .map((row) => (row.email || '').toLowerCase().trim())
+        .filter(Boolean)
+    );
+
+    const reporterUserIdsFromApplications = (seedAuthUsers || [])
+      .filter((u) => approvedReporterEmailSet.has((u.email || '').toLowerCase().trim()))
+      .map((u) => u.id);
+
+    if (reporterUserIdsFromApplications.length > 0) {
+      const { error: promoteReporterFromAppsError } = await supabaseAdmin
+        .from('users')
+        .update({ role: 'reporter' })
+        .in('id', reporterUserIdsFromApplications)
+        .neq('role', 'admin');
+
+      if (promoteReporterFromAppsError) throw promoteReporterFromAppsError;
+    }
+
     const { data: usersData, error: usersError } = await supabaseAdmin
       .from('users')
       .select(`
