@@ -1,21 +1,33 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Upload, Loader2, Save, X } from 'lucide-react';
+import { ArrowLeft, Upload, Loader2, Save, X, ImageIcon, Video, FileText, File } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabaseClient';
+
+const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
+
+type SelectedMedia = {
+  id: string;
+  file: File;
+  kind: 'image' | 'video' | 'document' | 'other';
+  previewUrl?: string;
+};
 
 export default function CreateNewsStory() {
   const router = useRouter();
   const supabase = createClient();
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedMedia[]>([]);
+  const selectedFilesRef = useRef<SelectedMedia[]>([]);
+  const [isCheckingRole, setIsCheckingRole] = useState(true);
+  const [canSubmitNews, setCanSubmitNews] = useState(false);
   const [categories, setCategories] = useState<{ id: string, name: string, parent_id: string | null, sort_order: number }[]>([]);
   const [formData, setFormData] = useState({
     title: '',
@@ -32,23 +44,101 @@ export default function CreateNewsStory() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    const kb = bytes / 1024;
+    if (kb < 1024) return `${kb.toFixed(1)} KB`;
+    return `${(kb / 1024).toFixed(1)} MB`;
+  };
+
+  const getFileKind = (file: File): SelectedMedia['kind'] => {
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+
+    const lowerName = file.name.toLowerCase();
+    const docExtensions = ['.pdf', '.doc', '.docx', '.txt', '.rtf', '.xls', '.xlsx', '.csv', '.ppt', '.pptx'];
+    if (file.type === 'application/pdf' || docExtensions.some((ext) => lowerName.endsWith(ext))) {
+      return 'document';
+    }
+
+    return 'other';
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const nextFiles = Array.from(e.target.files || []);
     if (!nextFiles.length) return;
 
-    const allowedTypes = ['image/', 'video/', 'application/pdf'];
-    const valid = nextFiles.filter((file) => allowedTypes.some((type) => file.type.startsWith(type)));
-    setSelectedFiles((prev) => [...prev, ...valid].slice(0, 10));
+    const mapped = nextFiles.map((file) => {
+      const kind = getFileKind(file);
+      const needsPreview = kind === 'image' || kind === 'video';
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        kind,
+        previewUrl: needsPreview ? URL.createObjectURL(file) : undefined,
+      } as SelectedMedia;
+    });
+
+    setSelectedFiles((prev) => {
+      const combined = [...prev, ...mapped];
+      if (combined.length <= 10) return combined;
+
+      const kept = combined.slice(0, 10);
+      const removed = combined.slice(10);
+      removed.forEach((item) => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      });
+      return kept;
+    });
+
     setSubmitError('');
+    e.target.value = '';
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setSelectedFiles((prev) => {
+      const current = prev[index];
+      if (current?.previewUrl) {
+        URL.revokeObjectURL(current.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
-
+  useEffect(() => {
+    selectedFilesRef.current = selectedFiles;
+  }, [selectedFiles]);
 
   useEffect(() => {
+    return () => {
+      selectedFilesRef.current.forEach((item) => {
+        if (item.previewUrl) {
+          URL.revokeObjectURL(item.previewUrl);
+        }
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    async function checkSubmissionRole() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      const { data } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const role = data?.role || '';
+      const allowed = role === 'reporter' || role === 'both' || role === 'admin' || (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+      setCanSubmitNews(allowed);
+      setIsCheckingRole(false);
+    }
+
     async function fetchCategories() {
       const { data } = await supabase
         .from('categories')
@@ -58,8 +148,10 @@ export default function CreateNewsStory() {
         .order('name', { ascending: true });
       if (data) setCategories(data);
     }
+
+    checkSubmissionRole();
     fetchCategories();
-  }, [supabase]);
+  }, [supabase, router]);
 
   const getPathLabel = (categoryId: string) => {
     const byId = new Map(categories.map((category) => [category.id, category]));
@@ -132,7 +224,8 @@ export default function CreateNewsStory() {
 
       // Optional media upload to storage bucket
       if (selectedFiles.length > 0 && insertedRows?.id) {
-        for (const file of selectedFiles) {
+        for (const media of selectedFiles) {
+          const file = media.file;
           const ext = file.name.includes('.') ? file.name.split('.').pop() : 'bin';
           const safeFileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
           const storagePath = `${user.id}/${insertedRows.id}/${safeFileName}`;
@@ -165,6 +258,43 @@ export default function CreateNewsStory() {
       setIsLoading(false);
     }
   };
+
+  const visualFiles = selectedFiles.filter((item) => item.kind === 'image' || item.kind === 'video');
+  const documentFiles = selectedFiles.filter((item) => item.kind === 'document' || item.kind === 'other');
+
+  if (isCheckingRole) {
+    return (
+      <div className="max-w-4xl mx-auto py-12">
+        <Card className="border-dashed shadow-none">
+          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+            <p className="text-sm text-gray-600">Checking your submission access...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!canSubmitNews) {
+    return (
+      <div className="max-w-4xl mx-auto py-8 space-y-4">
+        <Link href="/dashboard/news">
+          <Button variant="ghost" className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to My News
+          </Button>
+        </Link>
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="text-amber-900">Submission Access Restricted</CardTitle>
+            <CardDescription className="text-amber-800">
+              Only users with reporter, both, or admin roles can submit stories.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -245,31 +375,79 @@ export default function CreateNewsStory() {
                 <label className="block cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-8 text-center hover:bg-gray-50 transition-colors">
                   <input
                     type="file"
-                    accept="image/*,video/*,application/pdf"
+                    accept="image/*,video/*,.pdf,.doc,.docx,.txt,.rtf,.xls,.xlsx,.csv,.ppt,.pptx"
                     multiple
                     className="hidden"
                     onChange={handleFileChange}
                   />
                   <Upload className="mx-auto mb-3 h-10 w-10 text-gray-400" />
                   <h3 className="text-sm font-semibold text-gray-900">Click to add files</h3>
-                  <p className="mt-1 text-xs text-gray-500">Images, videos, PDFs | up to 10 files</p>
+                  <p className="mt-1 text-xs text-gray-500">Images, videos, PDFs, DOC/DOCX, and other docs | up to 10 files</p>
                 </label>
 
                 {selectedFiles.length > 0 && (
-                  <div className="space-y-2">
-                    {selectedFiles.map((file, index) => (
-                      <div key={`${file.name}-${index}`} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm">
-                        <span className="truncate pr-4">{file.name}</span>
-                        <button
-                          type="button"
-                          className="text-gray-400 hover:text-red-600"
-                          onClick={() => removeFile(index)}
-                          title="Remove file"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                  <div className="space-y-4">
+                    {visualFiles.length > 0 && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {selectedFiles.map((item, index) => {
+                          if (item.kind !== 'image' && item.kind !== 'video') return null;
+
+                          return (
+                            <div key={item.id} className="rounded-lg border border-gray-200 p-2 bg-white">
+                              <div className="relative aspect-video rounded-md overflow-hidden bg-gray-100">
+                                {item.kind === 'image' && item.previewUrl ? (
+                                  <img src={item.previewUrl} alt={item.file.name} className="w-full h-full object-cover" />
+                                ) : null}
+                                {item.kind === 'video' && item.previewUrl ? (
+                                  <video src={item.previewUrl} className="w-full h-full object-cover" controls preload="metadata" />
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="absolute top-2 right-2 bg-white/90 rounded-full p-1 text-gray-600 hover:text-red-600"
+                                  onClick={() => removeFile(index)}
+                                  title="Remove file"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                              <div className="mt-2 text-xs text-gray-600 flex items-center gap-2">
+                                {item.kind === 'image' ? <ImageIcon className="h-4 w-4" /> : <Video className="h-4 w-4" />}
+                                <span className="truncate">{item.file.name}</span>
+                                <span className="ml-auto">{formatFileSize(item.file.size)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    ))}
+                    )}
+
+                    {documentFiles.length > 0 && (
+                      <div className="space-y-2">
+                        {selectedFiles.map((item, index) => {
+                          if (item.kind !== 'document' && item.kind !== 'other') return null;
+
+                          return (
+                            <div key={item.id} className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm bg-white">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {item.kind === 'document' ? <FileText className="h-4 w-4 text-blue-600" /> : <File className="h-4 w-4 text-gray-500" />}
+                                <span className="truncate">{item.file.name}</span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-500">{formatFileSize(item.file.size)}</span>
+                                <button
+                                  type="button"
+                                  className="text-gray-400 hover:text-red-600"
+                                  onClick={() => removeFile(index)}
+                                  title="Remove file"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 

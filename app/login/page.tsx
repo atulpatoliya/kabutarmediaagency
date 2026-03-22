@@ -20,6 +20,24 @@ export default function Login() {
   const router = useRouter();
   const supabase = createClient();
 
+  const mapAuthErrorMessage = (message: string) => {
+    const text = String(message || '').toLowerCase();
+
+    if (text.includes('invalid login credentials')) {
+      return 'Invalid email or password. Please check caps lock, re-type password, or use reset password from admin.';
+    }
+
+    if (text.includes('email not confirmed')) {
+      return 'Your email is not confirmed yet. Please verify your inbox or contact support.';
+    }
+
+    if (text.includes('too many requests')) {
+      return 'Too many attempts. Please wait a minute and try again.';
+    }
+
+    return 'Login failed. Please try again or contact support at support@kabutarmedia.com.';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -27,7 +45,7 @@ export default function Login() {
     try {
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) {
-        setError('Invalid login credentials. Please contact support at support@kabutarmedia.com for assistance.');
+        setError(mapAuthErrorMessage(authError.message));
       } else {
         // Check user role
         const { data: userData, error: userError } = await supabase
@@ -104,6 +122,7 @@ export default function Login() {
                 required
                 className="mt-1"
               />
+              <p className="mt-1 text-xs text-gray-500">Tip: If login fails, check caps lock or ask admin to resend/reset credentials.</p>
             </div>
             <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-white" disabled={isLoading}>
               {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in...</> : 'Sign In'}

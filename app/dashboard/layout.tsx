@@ -21,22 +21,26 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 
-const navItems = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/dashboard/news', label: 'My News', icon: Newspaper },
-  { href: '/dashboard/purchases', label: 'Purchases', icon: ShoppingCart },
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-];
-
 const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
+
+  const canAccessNews = userRole === 'reporter' || userRole === 'both' || userRole === 'admin' || userEmail === MASTER_ADMIN_EMAIL;
+
+  const navItems = [
+    { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+    ...(canAccessNews ? [{ href: '/dashboard/news', label: 'My News', icon: Newspaper }] : []),
+    { href: '/dashboard/purchases', label: 'Purchases', icon: ShoppingCart },
+    { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  ];
 
   useEffect(() => {
     async function checkRole() {
@@ -51,6 +55,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         .select('role')
         .eq('id', user.id)
         .maybeSingle();
+
+      setUserRole(data?.role || null);
+      setUserEmail((user.email || '').toLowerCase());
 
       const isUserAdmin = data?.role === 'admin' || (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
       

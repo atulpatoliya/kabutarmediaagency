@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle, Loader2, IndianRupee, Clock, Search, MapPin, AlignLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, IndianRupee, Clock, Search, MapPin, AlignLeft, Eye } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabaseClient';
 
@@ -54,6 +55,9 @@ export default function AdminReviewDashboard() {
         .select(`
           *,
           users:reporter_id (
+            id,
+            role,
+            status,
             reporter_profiles (
               full_name,
               phone
@@ -203,7 +207,12 @@ export default function AdminReviewDashboard() {
                     <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                       <h4 className="text-sm font-semibold text-gray-900 mb-2">Full Story Content</h4>
                       <p className="text-gray-700 text-sm whitespace-pre-wrap line-clamp-4">{item.content}</p>
-                      <Button variant="link" className="px-0 h-auto font-medium text-primary mt-2">Read Full Source Content</Button>
+                      <Link href={`/dashboard/admin/review/${item.id}`}>
+                        <Button variant="link" className="px-0 h-auto font-medium text-primary mt-2 gap-1">
+                          <Eye className="h-4 w-4" />
+                          View Full News & Edit
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                   
@@ -219,12 +228,23 @@ export default function AdminReviewDashboard() {
                     
                     <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Reporter Identity</h4>
-                      {/* Note: Email is managed securely in auth.users and not exposed directly here */}
-                      <p className="text-sm font-medium text-gray-900">{item.users?.reporter_profiles?.[0]?.full_name || 'Verification Pending'}</p>
+                      <p className="text-sm font-medium text-gray-900">{item.users?.reporter_profiles?.[0]?.full_name || 'Name unavailable'}</p>
                       <p className="text-xs text-gray-600">{item.users?.reporter_profiles?.[0]?.phone || 'No phone attached'}</p>
+                      <p className="text-xs text-gray-500 mt-1">Role: <span className="font-medium text-gray-700">{item.users?.role || 'unknown'}</span></p>
+                      <p className="text-xs text-gray-500">Status: <span className="font-medium text-gray-700">{item.users?.status || 'unknown'}</span></p>
+                      <p className="text-xs text-gray-500 break-all">Reporter ID: <span className="font-mono">{item.reporter_id}</span></p>
                     </div>
 
                     <div className="space-y-3 pt-2">
+                      <Link href={`/dashboard/admin/review/${item.id}`}>
+                        <Button
+                          variant="outline"
+                          className="w-full gap-2 h-11"
+                        >
+                          <Eye className="w-5 h-5" />
+                          Open Full News
+                        </Button>
+                      </Link>
                       <Button 
                         onClick={() => handleUpdateStatus(item.id, 'published')}
                         disabled={actionLoading === item.id}

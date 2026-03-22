@@ -8,16 +8,29 @@ import { PlusCircle, Search, Filter, Loader2, IndianRupee, Clock, CheckCircle2, 
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabaseClient';
 
+const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
+
 export default function MyNews() {
   const [searchTerm, setSearchTerm] = useState('');
   const [news, setNews] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [canSubmitNews, setCanSubmitNews] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
     async function fetchNews() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const role = profile?.role || '';
+      const hasNewsPermission = role === 'reporter' || role === 'both' || role === 'admin' || (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+      setCanSubmitNews(hasNewsPermission);
 
       const { data, error } = await supabase
         .from('news')
@@ -63,10 +76,16 @@ export default function MyNews() {
           <h1 className="text-2xl font-bold text-gray-900">My News Dashboard</h1>
           <p className="text-gray-600 mt-1">Manage all your submitted and published news stories here</p>
         </div>
-        <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
+        {canSubmitNews ? (
+          <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
             <PlusCircle className="h-4 w-4" />
-          Submit New Story
-        </Link>
+            Submit New Story
+          </Link>
+        ) : (
+          <span className="text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+            News submission is available for reporter/both roles only.
+          </span>
+        )}
       </div>
 
       <Card>
@@ -136,10 +155,16 @@ export default function MyNews() {
             <p className="text-gray-500 max-w-sm mx-auto mb-6">
               You haven't submitted any news stories yet, or none match your search criteria.
             </p>
-                <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
+                {canSubmitNews ? (
+                  <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
                     <PlusCircle className="h-4 w-4" />
-                  Submit Your First Story
-                </Link>
+                    Submit Your First Story
+                  </Link>
+                ) : (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                    Your account can browse stories here, but only reporter/both roles can submit new news.
+                  </p>
+                )}
               </CardContent>
             </Card>
       )}
