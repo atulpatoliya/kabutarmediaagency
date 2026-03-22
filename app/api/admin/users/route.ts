@@ -43,6 +43,38 @@ export async function GET(request: NextRequest) {
       return auth.error;
     }
 
+    // Self-heal missing rows in public.users (common after schema/table resets).
+    // Existing auth users should always have a corresponding public.users row.
+    const { data: { users: seedAuthUsers }, error: seedAuthError } = await supabaseAdmin.auth.admin.listUsers();
+    if (seedAuthError) throw seedAuthError;
+
+    const authUserIds = (seedAuthUsers || []).map((u) => u.id);
+    if (authUserIds.length > 0) {
+      const { data: existingRows, error: existingRowsError } = await supabaseAdmin
+        .from('users')
+        .select('id')
+        .in('id', authUserIds);
+
+      if (existingRowsError) throw existingRowsError;
+
+      const existingIdSet = new Set((existingRows || []).map((row) => row.id));
+      const missingRows = (seedAuthUsers || [])
+        .filter((u) => !existingIdSet.has(u.id))
+        .map((u) => ({
+          id: u.id,
+          role: ((u.email || '').toLowerCase() === MASTER_ADMIN_EMAIL ? 'admin' : 'buyer') as 'admin' | 'buyer',
+          status: 'approved' as 'approved',
+        }));
+
+      if (missingRows.length > 0) {
+        const { error: insertMissingError } = await supabaseAdmin
+          .from('users')
+          .insert(missingRows);
+
+        if (insertMissingError) throw insertMissingError;
+      }
+    }
+
     const { data: usersData, error: usersError } = await supabaseAdmin
       .from('users')
       .select(`

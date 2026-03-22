@@ -161,6 +161,19 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
+-- Backfill public.users for existing auth accounts (useful after schema resets)
+INSERT INTO public.users (id, role, status)
+SELECT
+  au.id,
+  CASE
+    WHEN lower(coalesce(au.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::user_role
+    ELSE 'buyer'::user_role
+  END,
+  'approved'::user_status
+FROM auth.users au
+LEFT JOIN public.users pu ON pu.id = au.id
+WHERE pu.id IS NULL;
+
 -- Reporter Profiles Policies
 CREATE POLICY "Reporters can read own profile" ON public.reporter_profiles FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Reporters can update own profile" ON public.reporter_profiles FOR UPDATE USING (auth.uid() = user_id);
@@ -268,6 +281,25 @@ ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE public.categories
 ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.categories(id) ON DELETE SET NULL;
+
+ALTER TABLE public.reporter_profiles
+ADD COLUMN IF NOT EXISTS generated_password TEXT;
+
+ALTER TABLE public.reporter_profiles
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+
+-- Existing project backfill for public.users if rows are missing.
+INSERT INTO public.users (id, role, status)
+SELECT
+  au.id,
+  CASE
+    WHEN lower(coalesce(au.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::user_role
+    ELSE 'buyer'::user_role
+  END,
+  'approved'::user_status
+FROM auth.users au
+LEFT JOIN public.users pu ON pu.id = au.id
+WHERE pu.id IS NULL;
 
 WITH ordered_categories AS (
   SELECT id,
