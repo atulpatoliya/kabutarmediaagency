@@ -148,13 +148,26 @@ export default function AdminUsersDashboard() {
                   const profile = (Array.isArray(user?.reporter_profiles) && user.reporter_profiles.length > 0)
                     ? user.reporter_profiles[0]
                     : (user?.reporter_profiles || {} as any);
+                  const displayName = profile.full_name || user.metadata?.full_name || '';
                   const displayPhone = profile.phone || user.phone || user.application_phone;
+                  const displayEmail = user.email || '';
+                  const displayCity = profile.city || user.metadata?.city || '';
+                  const requiredFields = user.role === 'reporter' || user.role === 'both'
+                    ? [displayName, displayEmail, displayPhone, displayCity]
+                    : [displayName, displayEmail, displayPhone];
+                  const filledFields = requiredFields.filter((v: string) => String(v || '').trim().length > 0).length;
+                  const isComplete = filledFields === requiredFields.length;
                   return (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4">
                         <Link href={`/dashboard/admin/users/${user.id}`} className="block hover:bg-gray-50 rounded p-1 -m-1 transition-colors">
                           <div className="font-medium text-gray-900 group-hover:text-primary">
-                            {profile.full_name || user.metadata?.full_name || 'No Name Found'}
+                            {displayName || 'No Name Found'}
+                          </div>
+                          <div className="mt-1">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${isComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {isComplete ? 'Profile Complete' : `Profile Incomplete (${filledFields}/${requiredFields.length})`}
+                            </span>
                           </div>
                           <div className="text-gray-500 text-xs mt-0.5 font-mono">ID: {String(user.id).substring(0, 8)}...</div>
                           {displayPhone && <div className="text-gray-400 text-xs mt-1">?? {displayPhone}</div>}

@@ -203,6 +203,15 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const { user, news, transactions } = data;
   const isReporter = user.role === 'reporter' || user.role === 'both';
   const isBuyer = user.role === 'buyer' || user.role === 'both';
+  const displayName = user.profile?.full_name || user.metadata?.full_name || '';
+  const displayEmail = user.email || '';
+  const displayPhone = user.profile?.phone || user.phone || user.application_phone || '';
+  const displayCity = user.profile?.city || user.metadata?.city || '';
+  const requiredFields = isReporter
+    ? [displayName, displayEmail, displayPhone, displayCity]
+    : [displayName, displayEmail, displayPhone];
+  const filledFields = requiredFields.filter((v: string) => String(v || '').trim().length > 0).length;
+  const isProfileComplete = filledFields === requiredFields.length;
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -257,6 +266,11 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                 }`}>
                   {user.role}
                 </span>
+                <div className="mt-2">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${isProfileComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {isProfileComplete ? 'Profile Complete' : `Profile Incomplete (${filledFields}/${requiredFields.length})`}
+                  </span>
+                </div>
               </div>
             </div>
 
