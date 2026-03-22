@@ -138,8 +138,12 @@ export default function MyNews() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">Edit</Button>
-                  <Button variant="secondary" size="sm">View</Button>
+                  <Link href={`/dashboard/news/${item.id}/edit`}>
+                    <Button variant="outline" size="sm">Edit</Button>
+                  </Link>
+                  <Link href={`/dashboard/news/${item.id}`}>
+                    <Button variant="secondary" size="sm">View</Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
