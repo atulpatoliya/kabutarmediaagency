@@ -144,8 +144,11 @@ AS $$
 $$;
 
 -- Users Table Policies
+DROP POLICY IF EXISTS "Users can read own data" ON public.users;
 CREATE POLICY "Users can read own data" ON public.users FOR SELECT USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Admins can read all users" ON public.users;
 CREATE POLICY "Admins can read all users" ON public.users FOR SELECT USING (get_user_role(auth.uid()) = 'admin');
+DROP POLICY IF EXISTS "Admins can update users" ON public.users;
 CREATE POLICY "Admins can update users" ON public.users FOR UPDATE USING (get_user_role(auth.uid()) = 'admin');
 
 -- Trigger to insert user on auth signup
@@ -153,10 +156,19 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
   INSERT INTO public.users (id, role, status)
-  VALUES (new.id, 'buyer', 'approved');
+  VALUES (
+    new.id,
+    CASE
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::user_role
+      ELSE 'buyer'::user_role
+    END,
+    'approved'::user_status
+  )
+  ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
@@ -174,39 +186,68 @@ FROM auth.users au
 LEFT JOIN public.users pu ON pu.id = au.id
 WHERE pu.id IS NULL;
 
+UPDATE public.users
+SET role = 'admin'::user_role,
+    status = 'approved'::user_status
+WHERE id IN (
+  SELECT id
+  FROM auth.users
+  WHERE lower(coalesce(email, '')) = lower('directoratulpatoliya@gmail.com')
+);
+
 -- Reporter Profiles Policies
+DROP POLICY IF EXISTS "Reporters can read own profile" ON public.reporter_profiles;
 CREATE POLICY "Reporters can read own profile" ON public.reporter_profiles FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Reporters can update own profile" ON public.reporter_profiles;
 CREATE POLICY "Reporters can update own profile" ON public.reporter_profiles FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Reporters can insert own profile" ON public.reporter_profiles;
 CREATE POLICY "Reporters can insert own profile" ON public.reporter_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can read all profiles" ON public.reporter_profiles;
 CREATE POLICY "Admins can read all profiles" ON public.reporter_profiles FOR SELECT USING (get_user_role(auth.uid()) = 'admin');
 
 -- Categories Policies
+DROP POLICY IF EXISTS "Anyone can read categories" ON public.categories;
 CREATE POLICY "Anyone can read categories" ON public.categories FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins can insert categories" ON public.categories;
 CREATE POLICY "Admins can insert categories" ON public.categories FOR INSERT WITH CHECK (get_user_role(auth.uid()) = 'admin');
+DROP POLICY IF EXISTS "Admins can update categories" ON public.categories;
 CREATE POLICY "Admins can update categories" ON public.categories FOR UPDATE USING (get_user_role(auth.uid()) = 'admin');
 
 -- News Policies
+DROP POLICY IF EXISTS "Public can read published news" ON public.news;
 CREATE POLICY "Public can read published news" ON public.news FOR SELECT USING (status = 'published');
+DROP POLICY IF EXISTS "Reporters can read own news" ON public.news;
 CREATE POLICY "Reporters can read own news" ON public.news FOR SELECT USING (auth.uid() = reporter_id);
+DROP POLICY IF EXISTS "Reporters can insert own news" ON public.news;
 CREATE POLICY "Reporters can insert own news" ON public.news FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+DROP POLICY IF EXISTS "Reporters can update own news if not published" ON public.news;
 CREATE POLICY "Reporters can update own news if not published" ON public.news FOR UPDATE 
   USING (auth.uid() = reporter_id AND status != 'published' AND status != 'sold');
+DROP POLICY IF EXISTS "Admins have full access to news" ON public.news;
 CREATE POLICY "Admins have full access to news" ON public.news USING (get_user_role(auth.uid()) = 'admin');
+DROP POLICY IF EXISTS "Buyers can read purchased news" ON public.news;
 CREATE POLICY "Buyers can read purchased news" ON public.news FOR SELECT USING (
   id IN (SELECT get_user_news_purchases(auth.uid()))
 );
 
 -- Transactions Policies
+DROP POLICY IF EXISTS "Buyers can view own transactions" ON public.transactions;
 CREATE POLICY "Buyers can view own transactions" ON public.transactions FOR SELECT USING (auth.uid() = buyer_id);
+DROP POLICY IF EXISTS "Buyers can insert transactions" ON public.transactions;
 CREATE POLICY "Buyers can insert transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = buyer_id);
+DROP POLICY IF EXISTS "Reporters can view own sales" ON public.transactions;
 CREATE POLICY "Reporters can view own sales" ON public.transactions FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.news WHERE news.id = transactions.news_id AND news.reporter_id = auth.uid())
 );
+DROP POLICY IF EXISTS "Admins full access transactions" ON public.transactions;
 CREATE POLICY "Admins full access transactions" ON public.transactions USING (get_user_role(auth.uid()) = 'admin');
 
 -- Queries Policies
+DROP POLICY IF EXISTS "Users can view own queries" ON public.queries;
 CREATE POLICY "Users can view own queries" ON public.queries FOR SELECT USING (auth.uid() = sender_id);
+DROP POLICY IF EXISTS "Users can insert queries" ON public.queries;
 CREATE POLICY "Users can insert queries" ON public.queries FOR INSERT WITH CHECK (auth.uid() = sender_id);
+DROP POLICY IF EXISTS "Admins full access queries" ON public.queries;
 CREATE POLICY "Admins full access queries" ON public.queries USING (get_user_role(auth.uid()) = 'admin');
 
 -- 10. View Tracking System (Function)
@@ -218,6 +259,7 @@ CREATE TABLE public.news_views (
 );
 
 ALTER TABLE public.news_views ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Admins can read views" ON public.news_views;
 CREATE POLICY "Admins can read views" ON public.news_views FOR SELECT USING (get_user_role(auth.uid()) = 'admin');
 
 CREATE OR REPLACE FUNCTION record_news_view(p_news_id UUID, p_ip_address TEXT)
@@ -300,6 +342,15 @@ SELECT
 FROM auth.users au
 LEFT JOIN public.users pu ON pu.id = au.id
 WHERE pu.id IS NULL;
+
+UPDATE public.users
+SET role = 'admin'::user_role,
+    status = 'approved'::user_status
+WHERE id IN (
+  SELECT id
+  FROM auth.users
+  WHERE lower(coalesce(email, '')) = lower('directoratulpatoliya@gmail.com')
+);
 
 WITH ordered_categories AS (
   SELECT id,
