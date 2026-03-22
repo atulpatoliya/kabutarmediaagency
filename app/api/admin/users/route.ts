@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
         .from('users')
         .update({ role: 'reporter' })
         .in('id', reporterIds)
-        .neq('role', 'admin');
+        .eq('role', 'buyer');
 
       if (promoteReporterError) throw promoteReporterError;
     }
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         .from('users')
         .update({ role: 'reporter' })
         .in('id', reporterUserIdsFromApplications)
-        .neq('role', 'admin');
+        .eq('role', 'buyer');
 
       if (promoteReporterFromAppsError) throw promoteReporterFromAppsError;
     }

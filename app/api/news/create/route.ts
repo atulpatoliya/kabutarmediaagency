@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     const isMasterAdminEmail = (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
     const role = roleRow?.role;
-    const isAllowed = role === 'reporter' || role === 'admin' || isMasterAdminEmail;
+    const isAllowed = role === 'reporter' || role === 'both' || role === 'admin' || isMasterAdminEmail;
 
     if (!isAllowed) {
       return NextResponse.json({ error: 'Only reporter or admin accounts can submit stories.' }, { status: 403 });

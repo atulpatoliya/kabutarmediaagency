@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { ArrowLeft, CheckCircle, XCircle, Mail, Phone, MapPin, IndianRupee, FileText, ShoppingCart, Loader2, KeyRound, Wand2, Copy } from 'lucide-react';
 import Link from 'next/link';
 
+type AssignableRole = 'buyer' | 'reporter' | 'both';
+
 export default function AdminUserDetails({ params }: { params: { id: string } }) {
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +24,8 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const [generatedResetLink, setGeneratedResetLink] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<AssignableRole>('buyer');
+  const [isUpdatingRole, setIsUpdatingRole] = useState(false);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
@@ -56,6 +60,10 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
         const result = await res.json();
         if (res.ok) {
           setData(result);
+          const fetchedRole = String(result?.user?.role || 'buyer').toLowerCase();
+          if (fetchedRole === 'buyer' || fetchedRole === 'reporter' || fetchedRole === 'both') {
+            setSelectedRole(fetchedRole as AssignableRole);
+          }
         } else {
           console.error(result.error);
         }
@@ -133,6 +141,38 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
     }
   };
 
+  const handleRoleUpdate = async () => {
+    if (!userId) return;
+
+    setIsUpdatingRole(true);
+    try {
+      const res = await fetch(`/api/admin/user/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: selectedRole })
+      });
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        alert('User role updated successfully.');
+        setData((prev: any) => ({
+          ...prev,
+          user: {
+            ...prev.user,
+            role: result.user.role,
+            status: result.user.status
+          }
+        }));
+      } else {
+        alert(result.error || 'Failed to update role.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'An error occurred while updating role.');
+    } finally {
+      setIsUpdatingRole(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="border-dashed shadow-none">
@@ -161,7 +201,8 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   }
 
   const { user, news, transactions } = data;
-  const isReporter = user.role === 'reporter';
+  const isReporter = user.role === 'reporter' || user.role === 'both';
+  const isBuyer = user.role === 'buyer' || user.role === 'both';
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -212,11 +253,36 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                   {user.profile?.full_name || user.metadata?.full_name || 'No Name Found'}
                 </h3>
                 <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold mt-1 capitalize ${
-                  isReporter ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                  user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : user.role === 'both' ? 'bg-violet-100 text-violet-800' : 'bg-green-100 text-green-800'
                 }`}>
                   {user.role}
                 </span>
               </div>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4 space-y-2">
+              <h4 className="font-semibold text-sm text-gray-900">Role Management</h4>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as AssignableRole)}
+                  className="h-9 rounded-md border border-gray-300 px-2 text-sm bg-white"
+                >
+                  <option value="buyer">Buyer</option>
+                  <option value="reporter">Reporter</option>
+                  <option value="both">Both</option>
+                </select>
+                <Button
+                  size="sm"
+                  onClick={handleRoleUpdate}
+                  disabled={isUpdatingRole || selectedRole === user.role}
+                  className="h-9"
+                >
+                  {isUpdatingRole ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  Update Role
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">Master admin can switch this user between buyer, reporter, or both roles.</p>
             </div>
             
             <div className="border-t border-gray-100 pt-4 space-y-3 text-sm">
@@ -288,7 +354,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
 
         {/* Activity & Records */}
         <div className="md:col-span-2 space-y-6">
-          {isReporter ? (
+          {isReporter && (
             <Card className="border-gray-200">
               <CardHeader className="bg-gray-50 border-b border-gray-100 pb-4 flex flex-row items-center justify-between">
                 <div>
@@ -328,7 +394,9 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                 )}
               </CardContent>
             </Card>
-          ) : (
+          )}
+
+          {isBuyer && (
             <Card className="border-gray-200">
               <CardHeader className="bg-gray-50 border-b border-gray-100 pb-4 flex flex-row items-center justify-between">
                 <div>

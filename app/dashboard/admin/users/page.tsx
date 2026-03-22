@@ -62,8 +62,8 @@ export default function AdminUsersDashboard() {
     }
   };
 
-  const buyersAll = (Array.isArray(users) ? users : []).filter((u: any) => u && u.role === 'buyer');
-  const reportersAll = (Array.isArray(users) ? users : []).filter((u: any) => u && u.role === 'reporter');
+  const buyersAll = (Array.isArray(users) ? users : []).filter((u: any) => u && (u.role === 'buyer' || u.role === 'both'));
+  const reportersAll = (Array.isArray(users) ? users : []).filter((u: any) => u && (u.role === 'reporter' || u.role === 'both'));
 
   const currentAll = roleTab === 'buyer' ? buyersAll : reportersAll;
   const filtered = (Array.isArray(currentAll) ? currentAll : []).filter((u: any) => u && u.status === statusTab);
@@ -161,7 +161,13 @@ export default function AdminUsersDashboard() {
                         </Link>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize ${user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold capitalize ${
+                          user.role === 'reporter'
+                            ? 'bg-blue-100 text-blue-800'
+                            : user.role === 'both'
+                              ? 'bg-violet-100 text-violet-800'
+                              : 'bg-green-100 text-green-800'
+                        }`}>
                           {user.role}
                         </span>
                       </td>

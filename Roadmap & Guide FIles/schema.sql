@@ -24,7 +24,7 @@ DROP TYPE IF EXISTS news_status CASCADE;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 2. Create Custom Types
-CREATE TYPE user_role AS ENUM ('buyer', 'reporter', 'admin');
+CREATE TYPE user_role AS ENUM ('buyer', 'reporter', 'both', 'admin');
 CREATE TYPE user_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE news_status AS ENUM ('pending', 'published', 'sold', 'rejected', 'permanently_rejected');
 
@@ -319,6 +319,15 @@ CREATE POLICY "Admins can view and update applications" ON public.platform_appli
 -- 12. Existing Project Migration: Ordered Categories for News Settings
 -- Run this block on an already-created project to support the master admin
 -- category management screen with add/remove/reorder behavior.
+
+DO $$
+BEGIN
+  BEGIN
+    ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'both';
+  EXCEPTION
+    WHEN duplicate_object THEN NULL;
+  END;
+END $$;
 
 ALTER TABLE public.categories
 ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;

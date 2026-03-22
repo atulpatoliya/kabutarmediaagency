@@ -15,6 +15,8 @@ const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'direc
 
 export const dynamic = 'force-dynamic';
 
+type AssignableRole = 'buyer' | 'reporter' | 'both';
+
 async function requireAdmin() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -122,14 +124,16 @@ export async function GET(
     let newsList = [];
     let transactionsList = [];
 
-    if (userData.role === 'reporter') {
+    if (userData.role === 'reporter' || userData.role === 'both') {
       const { data: news } = await supabaseAdmin
         .from('news')
         .select('*')
         .eq('reporter_id', userId)
         .order('created_at', { ascending: false });
       newsList = news || [];
-    } else if (userData.role === 'buyer') {
+    }
+
+    if (userData.role === 'buyer' || userData.role === 'both') {
       const { data: txns } = await supabaseAdmin
         .from('transactions')
         .select('*, news:news_id(*)')
@@ -252,6 +256,64 @@ export async function POST(
 
   } catch (error: any) {
     console.error('Update Creds API Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  try {
+    const auth = await requireAdmin();
+    if (auth.error) {
+      return auth.error;
+    }
+
+    const supabase = await createServerClient();
+    const { data: { user: actingUser } } = await supabase.auth.getUser();
+    const isMasterAdminEmail = ((actingUser?.email || '').toLowerCase() === MASTER_ADMIN_EMAIL);
+
+    if (!isMasterAdminEmail) {
+      return NextResponse.json({ error: 'Only master admin can change user roles.' }, { status: 403 });
+    }
+
+    const resolvedParams = await params;
+    const userId = resolvedParams.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const role = String(body?.role || '').toLowerCase() as AssignableRole;
+
+    if (!['buyer', 'reporter', 'both'].includes(role)) {
+      return NextResponse.json({ error: 'Invalid role. Allowed roles: buyer, reporter, both.' }, { status: 400 });
+    }
+
+    const { data: targetAuthUser, error: targetAuthError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    if (targetAuthError) {
+      return NextResponse.json({ error: targetAuthError.message }, { status: 500 });
+    }
+
+    if ((targetAuthUser?.user?.email || '').toLowerCase() === MASTER_ADMIN_EMAIL) {
+      return NextResponse.json({ error: 'Master admin role cannot be changed.' }, { status: 400 });
+    }
+
+    const { data: updatedUser, error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({ role, status: 'approved' })
+      .eq('id', userId)
+      .select('id, role, status')
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true, user: updatedUser });
+  } catch (error: any) {
+    console.error('Role Update API Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
