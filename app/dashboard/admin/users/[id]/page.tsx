@@ -196,7 +196,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
         } else if (result.resetLink) {
           setGeneratedResetLink(result.resetLink);
           setShowCredModal(true);
-          alert('Mail could not be sent via SMTP right now. Reset link generated in modal.');
+          alert(result.notice || 'Email could not be sent right now. Secure reset link generated in modal.');
         } else {
           alert('Action completed. Please check logs if needed.');
         }
@@ -251,31 +251,53 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const isProfileComplete = filledFields === requiredFields.length;
 
   return (
-    <div className="space-y-6 max-w-5xl">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard/admin/users">
-          <Button variant="outline" size="sm" className="gap-2">
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{user.profile?.full_name || user.metadata?.full_name || 'No Name Found'}</h1>
-          <p className="text-gray-600 mt-1 font-mono text-sm">ID: {user.id}</p>
+    <div className="max-w-6xl space-y-6 animate-in fade-in-0 duration-300">
+      <section className="rounded-2xl border border-gray-200 bg-gradient-to-r from-white via-slate-50 to-white px-4 py-4 shadow-sm ring-1 ring-gray-100 sm:px-6 sm:py-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Link href="/dashboard/admin/users">
+              <Button variant="outline" size="sm" className="gap-2 bg-white transition-colors hover:bg-slate-50">
+                <ArrowLeft className="h-4 w-4" /> Back
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-gray-900">{user.profile?.full_name || user.metadata?.full_name || 'No Name Found'}</h1>
+              <p className="mt-1 text-xs font-mono text-gray-500 break-all">ID: {user.id}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
+              user.status === 'approved' ? 'bg-green-100 text-green-800' :
+              user.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
+            }`}>
+              {user.status === 'approved' && <CheckCircle className="h-3.5 w-3.5" />}
+              {user.status === 'rejected' && <XCircle className="h-3.5 w-3.5" />}
+              {user.status}
+            </span>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${
+              user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : user.role === 'both' ? 'bg-violet-100 text-violet-800' : 'bg-green-100 text-green-800'
+            }`}>
+              {user.role}
+            </span>
+            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${isProfileComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+              {isProfileComplete ? 'Profile Complete' : `Profile Incomplete (${filledFields}/${requiredFields.length})`}
+            </span>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid gap-6 xl:grid-cols-12">
         {/* Profile Card */}
-        <Card className="md:col-span-1 border-gray-200">
-          <CardHeader className="bg-gray-50 border-b border-gray-100 pb-4">
-            <CardTitle className="text-lg flex justify-between items-center">
-              Profile Details
-              <div className="flex items-center gap-2">
+        <Card className="border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md xl:col-span-4">
+          <CardHeader className="border-b border-gray-100 bg-gray-50/80 pb-4">
+            <div className="flex flex-col gap-3">
+              <CardTitle className="text-lg">Profile Details</CardTitle>
+              <div className="flex flex-wrap items-center gap-2">
                 <Button variant="outline" size="sm" onClick={() => {
                   setNewEmail(user.email || '');
                   setNewPassword('');
                   setShowCredModal(true);
-                }} className="h-7 text-xs flex items-center gap-1.5 font-medium border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100">
+                }} className="h-8 text-xs flex items-center gap-1.5 border-blue-200 bg-blue-50 font-medium text-blue-700 transition-colors hover:bg-blue-100">
                   <KeyRound className="w-3.5 h-3.5" /> Edit Login
                 </Button>
                 <Button
@@ -283,51 +305,36 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                   size="sm"
                   onClick={handleResendProfileMail}
                   disabled={isResendingProfileMail}
-                  className="h-7 text-xs flex items-center gap-1.5 font-medium border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                  className="h-8 text-xs flex items-center gap-1.5 border-emerald-200 bg-emerald-50 font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
                 >
                   {isResendingProfileMail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
                   Resend Profile Mail
                 </Button>
-                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
-                  user.status === 'approved' ? 'bg-green-100 text-green-800' :
-                  user.status === 'rejected' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {user.status === 'approved' && <CheckCircle className="w-3 h-3" />}
-                  {user.status === 'rejected' && <XCircle className="w-3 h-3" />}
-                  {user.status}
-                </span>
               </div>
-            </CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-lg">
-                {(user.profile?.full_name || user.metadata?.full_name || "N")[0]?.toUpperCase()}
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900 text-lg leading-tight">
-                  {user.profile?.full_name || user.metadata?.full_name || 'No Name Found'}
-                </h3>
-                <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold mt-1 capitalize ${
-                  user.role === 'reporter' ? 'bg-blue-100 text-blue-800' : user.role === 'both' ? 'bg-violet-100 text-violet-800' : 'bg-green-100 text-green-800'
-                }`}>
-                  {user.role}
-                </span>
-                <div className="mt-2">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${isProfileComplete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {isProfileComplete ? 'Profile Complete' : `Profile Incomplete (${filledFields}/${requiredFields.length})`}
-                  </span>
+          <CardContent className="space-y-5 pt-6">
+            <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-shadow duration-200 hover:shadow">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-lg font-bold text-primary">
+                  {(user.profile?.full_name || user.metadata?.full_name || 'N')[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold leading-tight text-gray-900">
+                    {user.profile?.full_name || user.metadata?.full_name || 'No Name Found'}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-gray-500">General profile and access information</p>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-gray-100 pt-4 space-y-2">
-              <h4 className="font-semibold text-sm text-gray-900">Role Management</h4>
-              <div className="flex items-center gap-2">
+            <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 transition-shadow duration-200 hover:shadow">
+              <h4 className="text-sm font-semibold text-gray-900">Role Management</h4>
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <select
                   value={selectedRole}
                   onChange={(e) => setSelectedRole(e.target.value as AssignableRole)}
-                  className="h-9 rounded-md border border-gray-300 px-2 text-sm bg-white"
+                  className="h-10 rounded-md border border-gray-300 bg-white px-3 text-sm transition-colors focus:border-blue-300 focus:outline-none"
                 >
                   <option value="buyer">Buyer</option>
                   <option value="reporter">Reporter</option>
@@ -337,16 +344,16 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                   size="sm"
                   onClick={handleRoleUpdate}
                   disabled={isUpdatingRole || selectedRole === user.role}
-                  className="h-9"
+                  className="h-10 transition-colors"
                 >
-                  {isUpdatingRole ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  {isUpdatingRole ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
                   Update Role
                 </Button>
               </div>
               <p className="text-xs text-gray-500">Master admin can switch this user between buyer, reporter, or both roles.</p>
             </div>
-            
-            <div className="border-t border-gray-100 pt-4 space-y-3 text-sm">
+
+            <div className="space-y-3 rounded-xl border border-gray-100 bg-white p-4 text-sm transition-shadow duration-200 hover:shadow">
               <div className="flex items-center gap-3 text-gray-600">
                 <Mail className="h-4 w-4 text-gray-400" />
                 <span>{user.email || 'N/A'}</span>
@@ -362,9 +369,9 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
             </div>
 
             {isReporter && user.profile?.bank_name && (
-              <div className="border-t border-gray-100 pt-4 space-y-2">
-                <h4 className="font-semibold text-sm text-gray-900">Bank Details</h4>
-                <div className="bg-gray-50 p-3 rounded-lg text-xs space-y-1 text-gray-600">
+              <div className="space-y-2 rounded-xl border border-gray-100 bg-white p-4 transition-shadow duration-200 hover:shadow">
+                <h4 className="text-sm font-semibold text-gray-900">Bank Details</h4>
+                <div className="rounded-lg bg-gray-50 p-3 text-xs text-gray-600 space-y-1">
                   <p><span className="font-medium text-gray-800">Bank:</span> {user.profile.bank_name}</p>
                   <p><span className="font-medium text-gray-800">Account:</span> {user.profile.account_number}</p>
                   <p><span className="font-medium text-gray-800">IFSC:</span> {user.profile.ifsc_code}</p>
@@ -373,40 +380,38 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
             )}
 
             {isReporter && user.profile?.generated_password && (
-              <div className="border-t border-gray-100 pt-4 bg-green-50 -mx-6 px-6 py-4 -mb-6 rounded-b-xl">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h4 className="font-semibold text-sm text-green-900 flex items-center gap-2">
-                      <KeyRound className="w-4 h-4" />
-                      Auto-Generated Credentials
-                    </h4>
-                    <p className="text-xs text-green-700 mt-1">Share these with the reporter if email wasn't delivered</p>
-                  </div>
+              <div className="space-y-3 rounded-xl border border-green-200 bg-green-50 p-4 transition-shadow duration-200 hover:shadow">
+                <div>
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-green-900">
+                    <KeyRound className="h-4 w-4" />
+                    Auto-Generated Credentials
+                  </h4>
+                  <p className="mt-1 text-xs text-green-700">Share these with the reporter if email was not delivered.</p>
                 </div>
-                <div className="bg-white border border-green-200 p-3 rounded-lg text-xs font-mono space-y-2">
-                  <div>
-                    <span className="text-green-700 font-semibold">Password: </span>
-                    <span className="text-gray-900 font-bold">{user.profile.generated_password}</span>
+                <div className="rounded-lg border border-green-200 bg-white p-3 text-xs font-mono">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold text-green-700">Password:</span>
+                    <span className="font-bold text-gray-900 break-all">{user.profile.generated_password}</span>
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(user.profile.generated_password);
                         setCopiedPassword(true);
                         setTimeout(() => setCopiedPassword(false), 2000);
                       }}
-                      className="ml-2 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 inline-flex items-center gap-1"
+                      className="inline-flex items-center gap-1 rounded bg-green-100 px-2 py-1 text-xs font-medium text-green-700 transition-colors hover:bg-green-200"
                     >
-                      {copiedPassword ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copiedPassword ? <CheckCircle className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                       {copiedPassword ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
                 </div>
               </div>
             )}
-            
+
             {isReporter && user.profile?.id_proof_url && (
-              <div className="border-t border-gray-100 pt-4">
+              <div className="rounded-xl border border-gray-100 bg-white p-4 transition-shadow duration-200 hover:shadow">
                 <a href={user.profile.id_proof_url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="w-full text-xs h-8">View ID Proof</Button>
+                  <Button variant="outline" className="h-9 w-full text-xs transition-colors hover:bg-slate-50">View ID Proof</Button>
                 </a>
               </div>
             )}
@@ -414,15 +419,15 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
         </Card>
 
         {/* Activity & Records */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="space-y-6 xl:col-span-8">
           {isReporter && (
-            <Card className="border-gray-200">
-              <CardHeader className="bg-gray-50 border-b border-gray-100 pb-4 flex flex-row items-center justify-between">
+            <Card className="border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md">
+              <CardHeader className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50 pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5 text-gray-500" /> News Submissions</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-lg"><FileText className="h-5 w-5 text-gray-500" /> News Submissions</CardTitle>
                   <CardDescription>All stories submitted by this reporter</CardDescription>
                 </div>
-                <div className="bg-white px-3 py-1 rounded text-sm font-semibold border border-gray-200 shadow-sm">
+                <div className="rounded border border-gray-200 bg-white px-3 py-1 text-sm font-semibold shadow-sm">
                   Total: {news.length}
                 </div>
               </CardHeader>
@@ -430,10 +435,10 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                 {news.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
                     {news.map((item: any) => (
-                      <li key={item.id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex justify-between items-start mb-1">
+                      <li key={item.id} className="p-4 transition-all duration-200 hover:bg-gray-50 sm:hover:translate-x-0.5">
+                        <div className="mb-1 flex flex-wrap items-start justify-between gap-2">
                           <h4 className="font-semibold text-gray-900">{item.title}</h4>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
                             item.status === 'published' ? 'bg-green-100 text-green-700' :
                             item.status === 'sold' ? 'bg-blue-100 text-blue-700' :
                             item.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
@@ -441,8 +446,8 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                             {item.status}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mb-2 line-clamp-1">{item.description}</p>
-                        <div className="flex gap-4 text-xs font-medium text-gray-500">
+                        <p className="mb-2 line-clamp-1 text-xs text-gray-500">{item.description}</p>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-gray-500">
                           <span>{new Date(item.created_at).toLocaleDateString()}</span>
                           <span className="flex items-center gap-1 text-green-600"><IndianRupee className="h-3 w-3" /> {item.reporter_price}</span>
                           <span>{item.city}, {item.state}</span>
@@ -458,13 +463,13 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
           )}
 
           {isBuyer && (
-            <Card className="border-gray-200">
-              <CardHeader className="bg-gray-50 border-b border-gray-100 pb-4 flex flex-row items-center justify-between">
+            <Card className="border-gray-200 shadow-sm transition-shadow duration-200 hover:shadow-md">
+              <CardHeader className="flex flex-col gap-3 border-b border-gray-100 bg-gray-50 pb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle className="text-lg flex items-center gap-2"><ShoppingCart className="h-5 w-5 text-gray-500" /> Purchase History</CardTitle>
+                  <CardTitle className="flex items-center gap-2 text-lg"><ShoppingCart className="h-5 w-5 text-gray-500" /> Purchase History</CardTitle>
                   <CardDescription>All exclusive stories purchased by this agency</CardDescription>
                 </div>
-                <div className="bg-white px-3 py-1 rounded text-sm font-semibold border border-gray-200 shadow-sm">
+                <div className="rounded border border-gray-200 bg-white px-3 py-1 text-sm font-semibold shadow-sm">
                   Total: {transactions.length}
                 </div>
               </CardHeader>
@@ -472,18 +477,18 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                 {transactions.length > 0 ? (
                   <ul className="divide-y divide-gray-100">
                     {transactions.map((txn: any) => (
-                      <li key={txn.id} className="p-4 hover:bg-gray-50 transition-colors">
-                        <div className="flex justify-between items-start mb-1">
+                      <li key={txn.id} className="p-4 transition-all duration-200 hover:bg-gray-50 sm:hover:translate-x-0.5">
+                        <div className="mb-1 flex flex-wrap items-start justify-between gap-2">
                           <h4 className="font-semibold text-gray-900">{txn.news?.title || 'Unknown News'}</h4>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
                             txn.payment_status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
                           }`}>
                             {txn.payment_status}
                           </span>
                         </div>
-                        <div className="flex gap-4 text-xs mt-2 text-gray-600">
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-600">
                           <span>Purchased: {new Date(txn.purchase_date).toLocaleDateString()}</span>
-                          <span className="flex items-center gap-1 text-green-600 font-bold"><IndianRupee className="h-3 w-3" /> {(txn.reporter_amount + txn.platform_margin).toLocaleString()}</span>
+                          <span className="flex items-center gap-1 font-bold text-green-600"><IndianRupee className="h-3 w-3" /> {(txn.reporter_amount + txn.platform_margin).toLocaleString()}</span>
                           <span className="font-mono text-gray-400">TXN: {txn.razorpay_payment_id || txn.id.substring(0,8)}</span>
                         </div>
                       </li>
@@ -500,9 +505,9 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
 
       {/* Update Credentials Modal */}
       {showCredModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-[2px]">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/70 bg-white shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-6 py-4">
               <h3 className="font-semibold text-gray-900 flex items-center gap-2">
                 <KeyRound className="w-5 h-5 text-blue-600" />
                 Update Login Credentials
@@ -512,11 +517,11 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                   setShowCredModal(false);
                   setGeneratedResetLink('');
                 }}
-                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+                className="text-xl font-bold text-gray-400 transition-colors hover:text-gray-600"
               >✕</button>
             </div>
             
-            <div className="p-6 space-y-5">
+            <div className="max-h-[70vh] space-y-5 overflow-y-auto p-6">
               {generatedResetLink && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800 space-y-2">
                   <p className="font-semibold flex items-center gap-1.5"><Mail className="w-4 h-4" /> Email server pending setup.</p>
@@ -525,7 +530,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                     <Input value={generatedResetLink} readOnly className="bg-white h-8 text-xs font-mono" />
                     <Button
                       size="sm"
-                      className="h-8 shrink-0 bg-blue-600 hover:bg-blue-700"
+                      className="h-8 shrink-0 bg-blue-600 transition-colors hover:bg-blue-700"
                       onClick={() => {
                         navigator.clipboard.writeText(generatedResetLink);
                         setCopiedLink(true);
@@ -568,22 +573,22 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                     className="flex-1 font-mono"
                   />
                   {newPassword && (
-                    <Button variant="outline" size="icon" onClick={copyPassword} className="shrink-0" title="Copy Password">
+                    <Button variant="outline" size="icon" onClick={copyPassword} className="shrink-0 transition-colors hover:bg-slate-100" title="Copy Password">
                       {copied ? <CheckCircle className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4 text-gray-600" />}
                     </Button>
                   )}
-                  <Button variant="outline" onClick={generatePassword} className="shrink-0 flex gap-2 w-auto bg-gray-50">
+                  <Button variant="outline" onClick={generatePassword} className="shrink-0 flex gap-2 w-auto bg-gray-50 transition-colors hover:bg-gray-100">
                     <Wand2 className="w-4 h-4 opacity-70" /> Auto
                   </Button>
                 </div>
               </div>
             </div>
             
-            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex flex-col gap-3">
+            <div className="border-t border-gray-100 bg-gray-50 px-6 py-4 flex flex-col gap-3">
               {!generatedResetLink && (
                 <Button
                   variant="outline"
-                  className="w-full text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100 hover:text-blue-800"
+                  className="w-full border-blue-200 bg-blue-50 text-blue-700 transition-colors hover:bg-blue-100 hover:text-blue-800"
                   onClick={handleSendResetLink}
                   disabled={isSendingLink || isUpdatingCreds || !newEmail}
                 >
@@ -592,14 +597,14 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                 </Button>
               )}
               <div className="flex justify-end gap-3 w-full">
-                <Button variant="outline" onClick={() => {
+                <Button variant="outline" className="transition-colors hover:bg-slate-100" onClick={() => {
                   setShowCredModal(false);
                   setGeneratedResetLink('');
                 }}>Cancel</Button>
                 <Button 
                   onClick={handleUpdateCreds} 
                   disabled={isUpdatingCreds || (!newEmail && !newPassword)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white min-w-[100px]"
+                  className="min-w-[100px] bg-blue-600 text-white transition-colors hover:bg-blue-700"
                 >
                   {isUpdatingCreds ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
                 </Button>

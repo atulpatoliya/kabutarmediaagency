@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Menu, X } from 'lucide-react';
@@ -24,11 +24,11 @@ const navLinks = [
 export function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [profileName, setProfileName] = useState<string>('My Account');
   const [profileImageUrl, setProfileImageUrl] = useState<string>('');
   const pathname = usePathname();
-  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
@@ -113,9 +113,25 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     if (!supabase) return;
-    await supabase.auth.signOut();
-    setUser(null);
-    router.push('/login');
+
+    setIsSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) {
+        console.error('Navbar sign-out error:', error);
+      }
+
+      setUser(null);
+      setProfileName('My Account');
+      setProfileImageUrl('');
+      setMobileOpen(false);
+      window.location.assign('/auth/signout');
+    } catch (error) {
+      console.error('Navbar sign-out failed:', error);
+      window.location.href = '/auth/signout';
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   return (
@@ -165,8 +181,8 @@ export function Navbar() {
                   )}
                   <span>{profileName}</span>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={handleSignOut}>
-                  Sign Out
+                <Button variant="ghost" size="sm" onClick={handleSignOut} disabled={isSigningOut}>
+                  {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                 </Button>
               </div>
             ) : (
@@ -218,10 +234,10 @@ export function Navbar() {
                     className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
                     onClick={() => {
                       handleSignOut();
-                      setMobileOpen(false);
                     }}
+                    disabled={isSigningOut}
                   >
-                    Sign Out
+                    {isSigningOut ? 'Signing Out...' : 'Sign Out'}
                   </Button>
                 </>
               ) : (

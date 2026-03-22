@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import { createClient as createServerClient } from '@/lib/supabaseServer';
 
 const __SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -17,6 +18,80 @@ const APP_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kabutarmedia.v
 export const dynamic = 'force-dynamic';
 
 type AssignableRole = 'buyer' | 'reporter' | 'both';
+
+type SendMailInput = {
+  to: string;
+  subject: string;
+  html: string;
+};
+
+type SendMailResult = {
+  ok: boolean;
+  provider?: 'resend' | 'smtp';
+  error?: string;
+};
+
+async function sendEmailWithFallback({ to, subject, html }: SendMailInput): Promise<SendMailResult> {
+  const errors: string[] = [];
+
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const resendFrom = process.env.RESEND_FROM_EMAIL || process.env.SMTP_FROM || process.env.MAIL_FROM || 'Kabutar Media <onboarding@resend.dev>';
+
+  if (resendApiKey) {
+    try {
+      const resend = new Resend(resendApiKey);
+      const response = await resend.emails.send({
+        from: resendFrom,
+        to: [to],
+        subject,
+        html,
+      });
+
+      if (!response.error) {
+        return { ok: true, provider: 'resend' };
+      }
+
+      errors.push(`Resend: ${response.error.message}`);
+    } catch (err: any) {
+      errors.push(`Resend exception: ${err?.message || 'Unknown error'}`);
+    }
+  } else {
+    errors.push('Resend not configured');
+  }
+
+  const smtpHost = process.env.SMTP_HOST || process.env.MAIL_HOST;
+  const smtpPort = Number(process.env.SMTP_PORT || process.env.MAIL_PORT || 587);
+  const smtpUser = process.env.SMTP_USER || process.env.MAIL_USER;
+  const smtpPass = process.env.SMTP_PASS || process.env.MAIL_PASS;
+  const smtpFrom = process.env.SMTP_FROM || process.env.MAIL_FROM || resendFrom;
+  const smtpSecure = String(process.env.SMTP_SECURE || process.env.MAIL_SECURE || (smtpPort === 465 ? 'true' : 'false')).toLowerCase() === 'true';
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: { user: smtpUser, pass: smtpPass },
+      });
+
+      await transporter.sendMail({
+        from: smtpFrom,
+        to,
+        subject,
+        html,
+      });
+
+      return { ok: true, provider: 'smtp' };
+    } catch (err: any) {
+      errors.push(`SMTP: ${err?.message || 'Unknown SMTP error'}`);
+    }
+  } else {
+    errors.push('SMTP not configured (need SMTP_HOST/SMTP_USER/SMTP_PASS)');
+  }
+
+  return { ok: false, error: errors.join(' | ') };
+}
 
 async function requireAdmin() {
   const supabase = await createServerClient();
@@ -315,22 +390,8 @@ export async function POST(
         return NextResponse.json({ error: linkError.message }, { status: 500 });
       }
 
-      const resendApiKey = process.env.RESEND_API_KEY;
-      const fromEmail = process.env.RESEND_FROM_EMAIL || 'Kabutar Media <onboarding@resend.dev>';
-
-      if (!resendApiKey) {
-        return NextResponse.json({
-          success: true,
-          emailSent: false,
-          resetLink: linkData.properties.action_link,
-          notice: 'RESEND_API_KEY not configured. Copy link manually.',
-        });
-      }
-
-      const resend = new Resend(resendApiKey);
-      const response = await resend.emails.send({
-        from: fromEmail,
-        to: [targetEmail],
+      const sendResult = await sendEmailWithFallback({
+        to: targetEmail,
         subject: '✅ Profile Approved - Access Details (Resent)',
         html: profileResendEmailHTML(
           targetName,
@@ -341,16 +402,16 @@ export async function POST(
         ),
       });
 
-      if (response.error) {
+      if (!sendResult.ok) {
         return NextResponse.json({
           success: true,
           emailSent: false,
           resetLink: linkData.properties.action_link,
-          notice: response.error.message,
+          notice: sendResult.error || 'Email could not be sent via configured providers.',
         });
       }
 
-      return NextResponse.json({ success: true, emailSent: true });
+      return NextResponse.json({ success: true, emailSent: true, provider: sendResult.provider });
     }
 
     if (sendResetLink) {
@@ -368,48 +429,22 @@ export async function POST(
          return NextResponse.json({ error: linkError.message }, { status: 500 });
       }
 
-      // Send via Resend
-      // Send via Resend
-      const resendApiKey = process.env.RESEND_API_KEY;
-      if (resendApiKey) {
-        const resend = new Resend(resendApiKey);
-        try {
-          const resendResponse = await resend.emails.send({
-            from: process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev',
-            to: [email],
-            subject: 'Reset Your Kabutar Media Password',
-            html: resetPasswordEmailHTML(name || 'User', linkData.properties.action_link)
-          });
+      const sendResult = await sendEmailWithFallback({
+        to: email,
+        subject: 'Reset Your Kabutar Media Password',
+        html: resetPasswordEmailHTML(name || 'User', linkData.properties.action_link),
+      });
 
-          if (resendResponse.error) {
-            console.error('Resend Validation Error:', resendResponse.error);
-            // If development mode / free tier throws 403 on unverified domain, return the link safely
-            return NextResponse.json({
-              success: true,
-              emailSent: false,
-              resetLink: linkData.properties.action_link,
-              notice: resendResponse.error.message
-            });
-          }
-
-          return NextResponse.json({ success: true, emailSent: true });
-        } catch (emailErr: any) {
-          console.error('Password reset email error:', emailErr);
-          return NextResponse.json({
-            success: true,
-            emailSent: false,
-            resetLink: linkData.properties.action_link,
-            notice: 'Email sent failed due to an exception. You can copy the link manually.'
-          });
-        }
-      } else {
-        // Return the link directly to the admin so they can copy-paste it
+      if (!sendResult.ok) {
         return NextResponse.json({ 
           success: true, 
           emailSent: false, 
-          resetLink: linkData.properties.action_link 
+          resetLink: linkData.properties.action_link,
+          notice: sendResult.error || 'Email could not be sent. You can copy the link manually.'
         });
       }
+
+      return NextResponse.json({ success: true, emailSent: true, provider: sendResult.provider });
     }
 
     if (!email && !password) {

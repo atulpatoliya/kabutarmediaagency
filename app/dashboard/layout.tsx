@@ -33,6 +33,7 @@ const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'direc
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const supabase = createClient();
@@ -66,8 +67,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [supabase, pathname, router]);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.push('/login');
+    setIsSigningOut(true);
+    try {
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      if (error) {
+        console.error('Dashboard sign-out error:', error);
+      }
+
+      window.location.assign('/auth/signout');
+    } catch (error) {
+      console.error('Dashboard sign-out failed:', error);
+      window.location.href = '/auth/signout';
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   return (
@@ -164,9 +177,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             variant="ghost"
             className="w-full justify-start gap-3 text-gray-600 hover:text-red-600 hover:bg-red-50"
             onClick={handleLogout}
+            disabled={isSigningOut}
           >
             <LogOut className="h-4 w-4" />
-            Sign Out
+            {isSigningOut ? 'Signing Out...' : 'Sign Out'}
           </Button>
         </div>
       </aside>
