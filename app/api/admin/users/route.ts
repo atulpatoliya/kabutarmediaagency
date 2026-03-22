@@ -147,23 +147,31 @@ export async function GET(request: NextRequest) {
 
     const { data: applicationRows } = await supabaseAdmin
       .from('platform_applications')
-      .select('email, phone, created_at')
+      .select('email, full_name, phone, created_at')
       .order('created_at', { ascending: false });
     
     const reporterMap = new Map(reporterProfiles?.map(p => [p.user_id, p]) || []);
     const applicationPhoneByEmail = new Map<string, string>();
+    const applicationPhoneByName = new Map<string, string>();
 
     for (const appRow of (applicationRows || [])) {
       const emailKey = String(appRow.email || '').toLowerCase().trim();
-      if (!emailKey || applicationPhoneByEmail.has(emailKey)) continue;
-      applicationPhoneByEmail.set(emailKey, appRow.phone || '');
+      const nameKey = String(appRow.full_name || '').toLowerCase().trim();
+
+      if (emailKey && !applicationPhoneByEmail.has(emailKey)) {
+        applicationPhoneByEmail.set(emailKey, appRow.phone || '');
+      }
+      if (nameKey && !applicationPhoneByName.has(nameKey)) {
+        applicationPhoneByName.set(nameKey, appRow.phone || '');
+      }
     }
 
     const combinedData = usersData.map(u => {
       const authUser = authMap.get(u.id);
       const reporterProfile = reporterMap.get(u.id);
       const authEmail = (authUser?.email || '').toLowerCase().trim();
-      const applicationPhone = applicationPhoneByEmail.get(authEmail) || '';
+      const fullName = String(reporterProfile?.full_name || authUser?.user_metadata?.full_name || '').toLowerCase().trim();
+      const applicationPhone = applicationPhoneByEmail.get(authEmail) || applicationPhoneByName.get(fullName) || '';
       
       return {
         ...u,

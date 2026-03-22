@@ -134,6 +134,21 @@ export async function GET(
       applicationPhone = applicationRow?.phone || null;
     }
 
+    if (!applicationPhone) {
+      const fullName = String(profileData?.full_name || authData?.user?.user_metadata?.full_name || '').trim();
+      if (fullName) {
+        const { data: applicationRowByName } = await supabaseAdmin
+          .from('platform_applications')
+          .select('phone, created_at')
+          .ilike('full_name', fullName)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        applicationPhone = applicationRowByName?.phone || null;
+      }
+    }
+
     // 4. Get news & transactions depending on role
     let newsList = [];
     let transactionsList = [];

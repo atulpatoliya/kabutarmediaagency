@@ -263,19 +263,38 @@ export async function POST(request: NextRequest) {
     // APPROVE flow
     // ────────────────────────────────────────────────
     if (action === 'approve') {
-      if (!email || !name || !type) {
+      const { data: applicationRow, error: applicationRowError } = await supabaseAdmin
+        .from('platform_applications')
+        .select('id, type, full_name, email, phone, status')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      if (applicationRowError) {
+        return NextResponse.json({ error: applicationRowError.message }, { status: 500 });
+      }
+
+      if (!applicationRow) {
+        return NextResponse.json({ error: 'Application not found.' }, { status: 404 });
+      }
+
+      const finalType = String(applicationRow.type || type || '').toLowerCase();
+      const finalEmail = String(applicationRow.email || email || '').trim();
+      const finalName = String(applicationRow.full_name || name || '').trim();
+      const finalPhone = String(applicationRow.phone || body.phone || '').trim();
+
+      if (!finalEmail || !finalName || !finalType) {
         return NextResponse.json({ error: 'Missing email, name, or type' }, { status: 400 });
       }
 
-      const roleToSet = type === 'reporter' ? 'reporter' : 'buyer';
+      const roleToSet = finalType === 'reporter' ? 'reporter' : 'buyer';
       const generatedPassword = generatePassword();
 
       // 1. Create auth user
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
+        email: finalEmail,
         password: generatedPassword,
         email_confirm: true,
-        user_metadata: { full_name: name }
+        user_metadata: { full_name: finalName, phone: finalPhone }
       });
 
       if (createError) {
@@ -287,7 +306,7 @@ export async function POST(request: NextRequest) {
           }
 
           const existingAuthUser = (existingAuthUsersData.users || []).find(
-            (u) => (u.email || '').toLowerCase() === String(email).toLowerCase()
+            (u) => (u.email || '').toLowerCase() === finalEmail.toLowerCase()
           );
 
           if (existingAuthUser) {
@@ -295,13 +314,13 @@ export async function POST(request: NextRequest) {
               .from('users')
               .upsert({ id: existingAuthUser.id, role: roleToSet, status: 'approved' }, { onConflict: 'id' });
 
-            if (type === 'reporter') {
+            if (finalType === 'reporter') {
               const { error: profileError } = await supabaseAdmin
                 .from('reporter_profiles')
                 .upsert({
                   user_id: existingAuthUser.id,
-                  full_name: name,
-                  phone: body.phone || 'Not provided',
+                  full_name: finalName,
+                  phone: finalPhone || 'Not provided',
                   city: body.city || 'Not provided',
                   id_proof_url: body.id_proof_url || '',
                   bank_name: body.bank_name || 'Not provided',
@@ -325,7 +344,7 @@ export async function POST(request: NextRequest) {
             success: true,
             action: 'approved',
             alreadyExists: true,
-            message: `Account with email "${email}" already exists. Application marked as approved.`
+            message: `Account with email "${finalEmail}" already exists. Application marked as approved.`
           });
         }
         return NextResponse.json({ error: createError.message }, { status: 500 });
@@ -340,13 +359,13 @@ export async function POST(request: NextRequest) {
         .upsert({ id: userId, role: roleToSet, status: 'approved' }, { onConflict: 'id' });
 
       // 1b. If reporter, create reporter_profiles entry
-      if (type === 'reporter') {
+      if (finalType === 'reporter') {
         const { error: profileError } = await supabaseAdmin
           .from('reporter_profiles')
           .upsert({
             user_id: userId,
-            full_name: name,
-            phone: body.phone || 'Not provided',
+            full_name: finalName,
+            phone: finalPhone || 'Not provided',
             city: body.city || 'Not provided',
             id_proof_url: body.id_proof_url || '',
             bank_name: body.bank_name || 'Not provided',
@@ -373,9 +392,9 @@ export async function POST(request: NextRequest) {
         try {
           await resend.emails.send({
             from: fromEmail,
-            to: [email],
+            to: [finalEmail],
             subject: `✅ Welcome to Kabutar Media – Your Account is Approved!`,
-            html: approvalEmailHTML(name, email, generatedPassword, roleToSet)
+            html: approvalEmailHTML(finalName, finalEmail, generatedPassword, roleToSet)
           });
           emailSent = true;
         } catch (emailErr) {
@@ -388,7 +407,7 @@ export async function POST(request: NextRequest) {
         action: 'approved',
         emailSent,
         credentials: {
-          email,
+          email: finalEmail,
           password: generatedPassword,
           loginLink: 'https://kabutarmedia.vercel.app/login'
         }

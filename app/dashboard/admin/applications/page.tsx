@@ -65,7 +65,8 @@ export default function AdminApplicationsDashboard() {
           action,
           email: app.email,
           name: app.full_name,
-          type: app.type
+          type: app.type,
+          phone: app.phone
         })
       });
 
