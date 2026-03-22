@@ -41,8 +41,17 @@ type NewsRecord = {
     reporter_profiles?: {
       full_name: string | null;
       phone: string | null;
-    }[];
+    }[] | {
+      full_name: string | null;
+      phone: string | null;
+    };
   } | null;
+};
+
+type ReporterDetails = {
+  fullName: string;
+  phone: string;
+  email: string;
 };
 
 type StoryAttachment = {
@@ -77,6 +86,11 @@ export default function AdminReviewDetailPage() {
   const [mediaLoading, setMediaLoading] = useState(false);
   const [mediaError, setMediaError] = useState('');
   const [attachments, setAttachments] = useState<StoryAttachment[]>([]);
+  const [reporterDetails, setReporterDetails] = useState<ReporterDetails>({
+    fullName: '',
+    phone: '',
+    email: '',
+  });
   const [categories, setCategories] = useState<Category[]>([]);
   const [news, setNews] = useState<NewsRecord | null>(null);
   const [formData, setFormData] = useState({
@@ -189,6 +203,34 @@ export default function AdminReviewDetailPage() {
   }, [isAuthorized, params.id, supabase]);
 
   useEffect(() => {
+    async function fetchReporterDetails() {
+      if (!news?.reporter_id) return;
+
+      try {
+        const response = await fetch(`/api/admin/user/${news.reporter_id}`);
+        const result = await response.json();
+
+        if (!response.ok || !result?.user) {
+          return;
+        }
+
+        const profile = result.user.profile || {};
+        const metadata = result.user.metadata || {};
+
+        setReporterDetails({
+          fullName: String(profile.full_name || metadata.full_name || '').trim(),
+          phone: String(profile.phone || result.user.phone || result.user.application_phone || metadata.phone || '').trim(),
+          email: String(result.user.email || '').trim(),
+        });
+      } catch {
+        // Keep UI fallback values if API fetch fails.
+      }
+    }
+
+    fetchReporterDetails();
+  }, [news?.reporter_id]);
+
+  useEffect(() => {
     async function fetchStoryAttachments() {
       if (!news) {
         setAttachments([]);
@@ -266,6 +308,21 @@ export default function AdminReviewDetailPage() {
 
   const visualAttachments = attachments.filter((item) => item.kind === 'image' || item.kind === 'video');
   const documentAttachments = attachments.filter((item) => item.kind === 'document' || item.kind === 'other');
+
+  const profileSource = news?.users?.reporter_profiles;
+  const profileObj = Array.isArray(profileSource) ? profileSource[0] : profileSource;
+
+  const reporterName =
+    String(profileObj?.full_name || '').trim() ||
+    reporterDetails.fullName ||
+    'Unavailable';
+
+  const reporterPhone =
+    String(profileObj?.phone || '').trim() ||
+    reporterDetails.phone ||
+    'Unavailable';
+
+  const reporterEmail = reporterDetails.email || 'Unavailable';
 
   const getPathLabel = (categoryId: string) => {
     const byId = new Map(categories.map((category) => [category.id, category]));
@@ -522,11 +579,13 @@ export default function AdminReviewDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2 text-sm text-gray-700">
-                <p><span className="font-semibold text-gray-900">Name:</span> {news.users?.reporter_profiles?.[0]?.full_name || 'Unavailable'}</p>
-                <p><span className="font-semibold text-gray-900">Phone:</span> {news.users?.reporter_profiles?.[0]?.phone || 'Unavailable'}</p>
+                <p><span className="font-semibold text-gray-900">Name:</span> {reporterName}</p>
+                <p><span className="font-semibold text-gray-900">Phone:</span> {reporterPhone}</p>
+                <p><span className="font-semibold text-gray-900">Email:</span> {reporterEmail}</p>
                 <p><span className="font-semibold text-gray-900">Role:</span> {news.users?.role || 'unknown'}</p>
                 <p><span className="font-semibold text-gray-900">Account Status:</span> {news.users?.status || 'unknown'}</p>
                 <p className="break-all"><span className="font-semibold text-gray-900">Reporter ID:</span> {news.reporter_id}</p>
+                <p className="break-all"><span className="font-semibold text-gray-900">News ID:</span> {news.id}</p>
               </CardContent>
             </Card>
 
@@ -613,6 +672,7 @@ export default function AdminReviewDetailPage() {
                   <p className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> Current location: {news.city}, {news.state}</p>
                   <p>Status badge: {news.status}</p>
                   <p>Current category: {news.categories?.name || 'Uncategorized'}</p>
+                  <p className="font-mono">News ID: {news.id}</p>
                 </div>
 
                 {!isEditing && (

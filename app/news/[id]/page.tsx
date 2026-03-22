@@ -1,32 +1,103 @@
 "use client";
 
-import { useState } from 'react';
-import { notFound } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Eye, Clock, IndianRupee, MapPin, Share2, ShieldCheck, FileCheck, ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabaseClient';
 
-// Using the same mock data as the marketplace for seamless transitioning
-const mockNews = [
-  { id: '1', title: 'Major Political Development in Delhi', category: 'Politics', price: 25000, views: 1200, timeAgo: '2 hours ago', exclusive: true, description: 'Exclusive details about the upcoming political alliance ahead of the assembly elections. Contains insider quotes and signed documents. High impact story appropriate for national television broadcast and front-page news coverage.', location: 'New Delhi, Delhi' },
-  { id: '2', title: 'Tech Giant Announces India Expansion', category: 'Technology', price: 18000, views: 980, timeAgo: '4 hours ago', exclusive: true, description: 'A global tech company is set to announce a $1B investment in India. Unreleased press info detailing the new HQ location and mass hiring initiatives planned for Q3.', location: 'Bangalore, Karnataka' },
-  { id: '3', title: 'New Sports Stadium for Mumbai', category: 'Sports', price: 12000, views: 756, timeAgo: '6 hours ago', exclusive: true, description: 'Architectural plans and construction timelines for the proposed international sports complex in South Mumbai. Contains exclusive renderings and municipal approvals.', location: 'Mumbai, Maharashtra' },
-  { id: '4', title: 'Healthcare Breakthrough at AIIMS', category: 'Health', price: 35000, views: 2100, timeAgo: '1 hour ago', exclusive: true, description: 'Unpublished clinical trial results detailing a new effective treatment approach for targeted disease variations. Interview clips with lead researchers included.', location: 'New Delhi, Delhi' },
-  { id: '5', title: 'Economic Survey Results Released', category: 'Business', price: 20000, views: 1500, timeAgo: '3 hours ago', exclusive: true, description: 'Complete pre-release breakdown of the national economic survey, including segment growth predictions and raw data spreadsheets not yet available to the public.', location: 'Mumbai, Maharashtra' },
-  { id: '6', title: 'Bollywood Celebrity in Legal Trouble', category: 'Entertainment', price: 15000, views: 3200, timeAgo: '30 minutes ago', exclusive: true, description: 'Verified copies of the legal notices sent to a leading A-list actor regarding the new controversy. Includes video footage and exclusive eyewitness statements.', location: 'Mumbai, Maharashtra' },
-];
+type NewsDetail = {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+  city: string;
+  state: string;
+  reporter_price: number;
+  views_count: number | null;
+  created_at: string;
+  categories?: {
+    id: string;
+    name: string;
+    parent_id: string | null;
+  } | {
+    id: string;
+    name: string;
+    parent_id: string | null;
+  }[] | null;
+};
 
 export default function NewsDetail({ params }: { params: { id: string } }) {
+  const supabase = createClient();
+  const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
-  
-  // Find the news item from mock data
-  const newsItem = mockNews.find(n => n.id === params.id);
-  
-  if (!newsItem) {
-    return notFound();
-  }
+  const [error, setError] = useState('');
+  const [newsItem, setNewsItem] = useState<NewsDetail | null>(null);
+
+  useEffect(() => {
+    async function fetchNewsItem() {
+      setIsLoading(true);
+      setError('');
+
+      const { data, error: fetchError } = await supabase
+        .from('news')
+        .select(`
+          id,
+          title,
+          description,
+          content,
+          city,
+          state,
+          reporter_price,
+          views_count,
+          created_at,
+          categories:category_id (
+            id,
+            name,
+            parent_id
+          )
+        `)
+        .eq('id', params.id)
+        .eq('status', 'published')
+        .maybeSingle();
+
+      if (fetchError || !data) {
+        setError('This story is not available right now.');
+        setNewsItem(null);
+        setIsLoading(false);
+        return;
+      }
+
+      setNewsItem(data as NewsDetail);
+      setIsLoading(false);
+    }
+
+    if (params.id) {
+      fetchNewsItem();
+    }
+  }, [params.id, supabase]);
+
+  const formatTimeAgo = (createdAt: string) => {
+    const now = new Date().getTime();
+    const created = new Date(createdAt).getTime();
+    const diffMs = Math.max(0, now - created);
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes} min ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  const categoryData = Array.isArray(newsItem?.categories) ? newsItem?.categories[0] : newsItem?.categories;
+  const categoryLabel = categoryData?.name || 'Uncategorized';
+  const locationLabel = [newsItem?.city, newsItem?.state].filter(Boolean).join(', ') || 'Location not provided';
 
   const handlePurchase = () => {
     setIsPurchasing(true);
@@ -36,6 +107,38 @@ export default function NewsDetail({ params }: { params: { id: string } }) {
       setIsPurchasing(false);
     }, 1500);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <Card className="border-dashed shadow-none">
+            <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+              <p className="text-sm text-gray-600">Loading story details...</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !newsItem) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <Card className="border-dashed shadow-none">
+            <CardContent className="p-10 text-center">
+              <p className="text-sm text-red-600 mb-4">{error || 'Story unavailable.'}</p>
+              <Link href="/marketplace">
+                <Button variant="outline">Back to Marketplace</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -52,13 +155,11 @@ export default function NewsDetail({ params }: { params: { id: string } }) {
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200">
               <div className="flex flex-wrap items-center gap-2 mb-4">
                 <Badge variant="outline" className="text-sm font-medium border-primary/30 text-primary bg-primary/5 px-3 py-1">
-                  {newsItem.category}
+                  {categoryLabel}
                 </Badge>
-                {newsItem.exclusive && (
-                  <Badge className="text-sm font-medium bg-amber-100 text-amber-800 border-amber-200 px-3 py-1">
-                    <ShieldCheck className="w-3 h-3 mr-1" /> EXCLUSIVE RIGHTS
-                  </Badge>
-                )}
+                <Badge className="text-sm font-medium bg-amber-100 text-amber-800 border-amber-200 px-3 py-1">
+                  <ShieldCheck className="w-3 h-3 mr-1" /> EXCLUSIVE RIGHTS
+                </Badge>
               </div>
               
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">
@@ -68,23 +169,27 @@ export default function NewsDetail({ params }: { params: { id: string } }) {
               <div className="flex flex-wrap items-center gap-6 text-sm text-gray-500 mb-8 pb-8 border-b border-gray-100">
                 <div className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4" />
-                  <span>{newsItem.location}</span>
+                  <span>{locationLabel}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-4 w-4" />
-                  <span>{newsItem.timeAgo}</span>
+                  <span>{formatTimeAgo(newsItem.created_at)}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Eye className="h-4 w-4" />
-                  <span>{newsItem.views.toLocaleString()} views</span>
+                  <span>{(newsItem.views_count || 0).toLocaleString('en-IN')} views</span>
                 </div>
               </div>
               
               <div className="prose prose-gray max-w-none">
                 <h3 className="text-xl font-semibold mb-4 text-gray-900">Story Overview</h3>
                 <p className="text-gray-700 leading-relaxed text-lg mb-6">
-                  {newsItem.description}
+                  {newsItem.description || 'No short description provided.'}
                 </p>
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-6">
+                  <h4 className="font-semibold text-gray-900 mb-2">Full Story</h4>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-6">{newsItem.content}</p>
+                </div>
                 <div className="mt-8 bg-blue-50 border border-blue-100 rounded-xl p-5">
                   <div className="flex items-start gap-4">
                     <div className="mt-1 bg-white p-2 rounded-full shadow-sm">
@@ -114,7 +219,7 @@ export default function NewsDetail({ params }: { params: { id: string } }) {
                   <div className="flex items-center justify-center gap-1">
                     <IndianRupee className="h-7 w-7 text-gray-900" />
                     <span className="text-4xl font-extrabold text-gray-900">
-                      {newsItem.price.toLocaleString('en-IN')}
+                      {Number(newsItem.reporter_price || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                 </div>
