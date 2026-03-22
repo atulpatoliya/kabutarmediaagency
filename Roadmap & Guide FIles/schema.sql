@@ -46,7 +46,9 @@ CREATE TABLE public.reporter_profiles (
     bank_name TEXT NOT NULL,
     account_number TEXT NOT NULL,
     ifsc_code TEXT NOT NULL,
-    agreement_accepted BOOLEAN NOT NULL DEFAULT FALSE
+    agreement_accepted BOOLEAN NOT NULL DEFAULT FALSE,
+    generated_password TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- 5. Categories Table

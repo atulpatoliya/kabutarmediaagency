@@ -21,6 +21,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const [isSendingLink, setIsSendingLink] = useState(false);
   const [generatedResetLink, setGeneratedResetLink] = useState('');
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
@@ -240,6 +241,37 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                   <p><span className="font-medium text-gray-800">Bank:</span> {user.profile.bank_name}</p>
                   <p><span className="font-medium text-gray-800">Account:</span> {user.profile.account_number}</p>
                   <p><span className="font-medium text-gray-800">IFSC:</span> {user.profile.ifsc_code}</p>
+                </div>
+              </div>
+            )}
+
+            {isReporter && user.profile?.generated_password && (
+              <div className="border-t border-gray-100 pt-4 bg-green-50 -mx-6 px-6 py-4 -mb-6 rounded-b-xl">
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <h4 className="font-semibold text-sm text-green-900 flex items-center gap-2">
+                      <KeyRound className="w-4 h-4" />
+                      Auto-Generated Credentials
+                    </h4>
+                    <p className="text-xs text-green-700 mt-1">Share these with the reporter if email wasn't delivered</p>
+                  </div>
+                </div>
+                <div className="bg-white border border-green-200 p-3 rounded-lg text-xs font-mono space-y-2">
+                  <div>
+                    <span className="text-green-700 font-semibold">Password: </span>
+                    <span className="text-gray-900 font-bold">{user.profile.generated_password}</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.profile.generated_password);
+                        setCopiedPassword(true);
+                        setTimeout(() => setCopiedPassword(false), 2000);
+                      }}
+                      className="ml-2 px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 inline-flex items-center gap-1"
+                    >
+                      {copiedPassword ? <CheckCircle className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                      {copiedPassword ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

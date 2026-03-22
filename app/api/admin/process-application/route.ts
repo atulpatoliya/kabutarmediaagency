@@ -317,7 +317,8 @@ export async function POST(request: NextRequest) {
             bank_name: body.bank_name || 'Not provided',
             account_number: body.account_number || 'Not provided',
             ifsc_code: body.ifsc_code || 'Not provided',
-            agreement_accepted: true
+            agreement_accepted: true,
+            generated_password: generatedPassword
           }, { onConflict: 'user_id' });
 
         if (profileError) {
