@@ -205,8 +205,100 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only master admin can run bulk role sync.' }, { status: 403 });
     }
 
+    let action = 'syncRoles';
+    try {
+      const body = await request.json();
+      action = String(body?.action || 'syncRoles');
+    } catch {
+      action = 'syncRoles';
+    }
+
     const { data: { users: authUsers }, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
     if (authUsersError) throw authUsersError;
+
+    if (action === 'syncPhones') {
+      const { data: usersRows, error: usersRowsError } = await supabaseAdmin
+        .from('users')
+        .select('id, role');
+      if (usersRowsError) throw usersRowsError;
+
+      const roleByUserId = new Map((usersRows || []).map((u) => [u.id, u.role]));
+
+      const emailToAuthUser = new Map<string, any>();
+      const nameToAuthUser = new Map<string, any>();
+      for (const authUser of (authUsers || [])) {
+        const emailKey = String(authUser.email || '').toLowerCase().trim();
+        const fullNameKey = String(authUser.user_metadata?.full_name || '').toLowerCase().trim();
+        if (emailKey && !emailToAuthUser.has(emailKey)) {
+          emailToAuthUser.set(emailKey, authUser);
+        }
+        if (fullNameKey && !nameToAuthUser.has(fullNameKey)) {
+          nameToAuthUser.set(fullNameKey, authUser);
+        }
+      }
+
+      const { data: applicationRows, error: applicationRowsError } = await supabaseAdmin
+        .from('platform_applications')
+        .select('email, full_name, phone, created_at')
+        .order('created_at', { ascending: false });
+      if (applicationRowsError) throw applicationRowsError;
+
+      let matchedUsers = 0;
+      let authMetadataUpdated = 0;
+      let reporterProfilesUpdated = 0;
+
+      const handledUserIds = new Set<string>();
+
+      for (const appRow of (applicationRows || [])) {
+        const phone = String(appRow.phone || '').trim();
+        if (!phone) continue;
+
+        const emailKey = String(appRow.email || '').toLowerCase().trim();
+        const fullNameKey = String(appRow.full_name || '').toLowerCase().trim();
+
+        const authUser = (emailKey ? emailToAuthUser.get(emailKey) : null) || (fullNameKey ? nameToAuthUser.get(fullNameKey) : null);
+        if (!authUser) continue;
+        if (handledUserIds.has(authUser.id)) continue;
+
+        handledUserIds.add(authUser.id);
+        matchedUsers += 1;
+
+        const currentMetadata = authUser.user_metadata || {};
+        if (String(currentMetadata.phone || '').trim() !== phone) {
+          const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+            user_metadata: {
+              ...currentMetadata,
+              phone,
+            },
+          });
+
+          if (!updateAuthError) {
+            authMetadataUpdated += 1;
+          }
+        }
+
+        const userRole = roleByUserId.get(authUser.id);
+        if (userRole === 'reporter' || userRole === 'both') {
+          const { data: profileUpdateRows, error: profileUpdateError } = await supabaseAdmin
+            .from('reporter_profiles')
+            .update({ phone })
+            .eq('user_id', authUser.id)
+            .select('user_id');
+
+          if (!profileUpdateError && (profileUpdateRows || []).length > 0) {
+            reporterProfilesUpdated += (profileUpdateRows || []).length;
+          }
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        action: 'syncPhones',
+        matchedUsers,
+        authMetadataUpdated,
+        reporterProfilesUpdated,
+      });
+    }
 
     const authUsersByEmail = new Map(
       (authUsers || [])
@@ -263,6 +355,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      action: 'syncRoles',
       updatedFromProfiles,
       updatedFromApplications,
       totalUpdated: updatedFromProfiles + updatedFromApplications,
