@@ -10,6 +10,7 @@ if (!__SUPABASE_URL || !__SUPABASE_SERVICE_ROLE_KEY) {
 }
 const supabaseAdmin = createClient(__SUPABASE_URL, __SUPABASE_SERVICE_ROLE_KEY);
 const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
+const APP_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kabutarmedia.vercel.app').replace(/\/$/, '');
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,9 @@ function generatePassword(): string {
 // ─── HTML Email Templates ────────────────────────────────────────────────────
 
 function approvalEmailHTML(name: string, email: string, password: string, role: string): string {
+  const loginUrl = `${APP_BASE_URL}/login`;
+  const settingsUrl = `${APP_BASE_URL}/dashboard/settings`;
+
   return `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -84,7 +88,7 @@ function approvalEmailHTML(name: string, email: string, password: string, role: 
                 Dear <strong>${name}</strong>,
               </p>
               <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 28px;">
-                Congratulations! Your application to join <strong>Kabutar Media Agency</strong> as a <strong>${role}</strong> has been reviewed and <strong>approved</strong>. Here are your login credentials:
+                Congratulations! Your profile is now approved on <strong>Kabutar Media Agency</strong> as a <strong>${role}</strong>. Here are your login credentials:
               </p>
 
               <!-- Credentials Box -->
@@ -108,9 +112,21 @@ function approvalEmailHTML(name: string, email: string, password: string, role: 
 
               <!-- Login Button -->
               <div style="text-align:center;margin-bottom:28px;">
-                <a href="https://kabutarmedia.vercel.app/login" style="display:inline-block;background:linear-gradient(135deg,#1a56db,#6366f1);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:50px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
+                <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(135deg,#1a56db,#6366f1);color:#ffffff;text-decoration:none;padding:14px 48px;border-radius:50px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
                   Login to Your Account →
                 </a>
+              </div>
+
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;margin-bottom:18px;">
+                <h4 style="margin:0 0 8px;color:#1e3a8a;font-size:14px;">Next Step: Complete Your General Profile Details</h4>
+                <p style="margin:0;color:#1e40af;font-size:13px;line-height:1.5;">
+                  After login, please fill/update your general details (phone, city, bio, profile photo) from Settings.
+                </p>
+                <div style="margin-top:12px;">
+                  <a href="${settingsUrl}" style="display:inline-block;background:#1d4ed8;color:#ffffff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:700;">
+                    Open Settings
+                  </a>
+                </div>
               </div>
 
               <p style="color:#6b7280;font-size:13px;background:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:0 8px 8px 0;margin:0;">
@@ -407,12 +423,12 @@ export async function POST(request: NextRequest) {
 
       // 3. Send approval email with credentials
       let emailSent = false;
-      if (resend && email) {
+      if (resend && finalEmail) {
         try {
           await resend.emails.send({
             from: fromEmail,
             to: [finalEmail],
-            subject: `✅ Welcome to Kabutar Media – Your Account is Approved!`,
+            subject: `✅ Profile Approved - Login Details & Next Steps`,
             html: approvalEmailHTML(finalName, finalEmail, generatedPassword, roleToSet)
           });
           emailSent = true;
@@ -428,7 +444,7 @@ export async function POST(request: NextRequest) {
         credentials: {
           email: finalEmail,
           password: generatedPassword,
-          loginLink: 'https://kabutarmedia.vercel.app/login'
+          loginLink: `${APP_BASE_URL}/login`
         }
       });
     }
