@@ -12,6 +12,7 @@ if (!__SUPABASE_URL || !__SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabaseAdmin = createClient(__SUPABASE_URL, __SUPABASE_SERVICE_ROLE_KEY);
 const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
+const APP_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL || 'https://kabutarmedia.vercel.app').replace(/\/$/, '');
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,79 @@ function resetPasswordEmailHTML(name: string, resetLink: string): string {
               <p style="color:#6b7280;font-size:13px;margin:0;">
                 If you did not request a password reset, please ignore this email.
               </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+function profileResendEmailHTML(
+  name: string,
+  email: string,
+  role: string,
+  resetLink: string,
+  generatedPassword?: string | null,
+): string {
+  const loginUrl = `${APP_BASE_URL}/login`;
+  const settingsUrl = `${APP_BASE_URL}/dashboard/settings`;
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#f4f6f8;font-family:Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a56db,#6366f1);padding:40px;text-align:center;">
+              <h1 style="color:#ffffff;margin:0;font-size:28px;font-weight:700;">🕊️ Kabutar Media</h1>
+              <p style="color:rgba(255,255,255,0.8);margin:8px 0 0;font-size:14px;">News Marketplace Platform</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#f0fdf4;padding:24px;text-align:center;border-bottom:1px solid #bbf7d0;">
+              <h2 style="color:#15803d;margin:0;font-size:24px;font-weight:700;">Your Profile Is Approved</h2>
+              <p style="color:#166534;margin:8px 0 0;font-size:15px;">Role: <strong>${role}</strong></p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:36px 40px;">
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear <strong>${name}</strong>,</p>
+              <p style="color:#374151;font-size:15px;line-height:1.6;margin:0 0 20px;">As requested, we are re-sending your account access details.</p>
+
+              <div style="background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:20px;">
+                <p style="margin:0 0 10px;color:#475569;font-size:13px;font-weight:700;">ACCOUNT DETAILS</p>
+                <p style="margin:0 0 8px;color:#1e293b;font-size:14px;"><strong>Email:</strong> ${email}</p>
+                ${generatedPassword ? `<p style="margin:0 0 8px;color:#1e293b;font-size:14px;"><strong>Last generated password:</strong> <span style="font-family:monospace;">${generatedPassword}</span></p>` : ''}
+                <p style="margin:0;color:#334155;font-size:13px;">If the old password does not work, use the secure reset link below.</p>
+              </div>
+
+              <div style="text-align:center;margin:0 0 14px;">
+                <a href="${loginUrl}" style="display:inline-block;background:linear-gradient(135deg,#1a56db,#6366f1);color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:40px;font-size:14px;font-weight:700;">Login</a>
+              </div>
+
+              <div style="text-align:center;margin:0 0 20px;">
+                <a href="${resetLink}" style="display:inline-block;background:#0f766e;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:40px;font-size:14px;font-weight:700;">Reset Password Securely</a>
+              </div>
+
+              <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:14px;">
+                <p style="margin:0 0 8px;color:#1e3a8a;font-size:13px;font-weight:700;">Next Step</p>
+                <p style="margin:0;color:#1e40af;font-size:13px;line-height:1.5;">After login, please fill/update your general details from Settings.</p>
+                <p style="margin:8px 0 0;"><a href="${settingsUrl}" style="color:#1d4ed8;font-size:13px;font-weight:700;text-decoration:none;">Open Settings</a></p>
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+              <p style="color:#9ca3af;font-size:12px;margin:0;">© 2026 Kabutar Media Agency</p>
             </td>
           </tr>
         </table>
@@ -205,7 +279,79 @@ export async function POST(
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    const { email, password, sendResetLink, name } = await request.json();
+    const { email, password, sendResetLink, resendProfileEmail, name } = await request.json();
+
+    if (resendProfileEmail) {
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+      if (authError) {
+        return NextResponse.json({ error: authError.message }, { status: 500 });
+      }
+
+      const targetEmail = String(authData?.user?.email || email || '').trim();
+      if (!targetEmail) {
+        return NextResponse.json({ error: 'User email not found.' }, { status: 400 });
+      }
+
+      const targetName = String(name || authData?.user?.user_metadata?.full_name || 'User').trim();
+
+      const { data: roleData } = await supabaseAdmin
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .maybeSingle();
+
+      const { data: profileData } = await supabaseAdmin
+        .from('reporter_profiles')
+        .select('generated_password')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: targetEmail,
+      });
+
+      if (linkError) {
+        return NextResponse.json({ error: linkError.message }, { status: 500 });
+      }
+
+      const resendApiKey = process.env.RESEND_API_KEY;
+      const fromEmail = process.env.RESEND_FROM_EMAIL || 'Kabutar Media <onboarding@resend.dev>';
+
+      if (!resendApiKey) {
+        return NextResponse.json({
+          success: true,
+          emailSent: false,
+          resetLink: linkData.properties.action_link,
+          notice: 'RESEND_API_KEY not configured. Copy link manually.',
+        });
+      }
+
+      const resend = new Resend(resendApiKey);
+      const response = await resend.emails.send({
+        from: fromEmail,
+        to: [targetEmail],
+        subject: '✅ Profile Approved - Access Details (Resent)',
+        html: profileResendEmailHTML(
+          targetName,
+          targetEmail,
+          String(roleData?.role || 'buyer'),
+          linkData.properties.action_link,
+          profileData?.generated_password || null,
+        ),
+      });
+
+      if (response.error) {
+        return NextResponse.json({
+          success: true,
+          emailSent: false,
+          resetLink: linkData.properties.action_link,
+          notice: response.error.message,
+        });
+      }
+
+      return NextResponse.json({ success: true, emailSent: true });
+    }
 
     if (sendResetLink) {
       if (!email) {

@@ -26,6 +26,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const [copiedPassword, setCopiedPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<AssignableRole>('buyer');
   const [isUpdatingRole, setIsUpdatingRole] = useState(false);
+  const [isResendingProfileMail, setIsResendingProfileMail] = useState(false);
 
   const generatePassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
@@ -173,6 +174,42 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
     }
   };
 
+  const handleResendProfileMail = async () => {
+    if (!userId) return;
+
+    setIsResendingProfileMail(true);
+    try {
+      const res = await fetch(`/api/admin/user/${userId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resendProfileEmail: true,
+          name: data?.user?.profile?.full_name || data?.user?.metadata?.full_name || 'User',
+          email: data?.user?.email || ''
+        })
+      });
+
+      const result = await res.json();
+      if (res.ok && result.success) {
+        if (result.emailSent) {
+          alert('Profile approval mail resent successfully.');
+        } else if (result.resetLink) {
+          setGeneratedResetLink(result.resetLink);
+          setShowCredModal(true);
+          alert('Mail could not be sent via SMTP right now. Reset link generated in modal.');
+        } else {
+          alert('Action completed. Please check logs if needed.');
+        }
+      } else {
+        alert(result.error || 'Failed to resend profile mail.');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to resend profile mail.');
+    } finally {
+      setIsResendingProfileMail(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card className="border-dashed shadow-none">
@@ -240,6 +277,16 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                   setShowCredModal(true);
                 }} className="h-7 text-xs flex items-center gap-1.5 font-medium border-blue-200 text-blue-700 bg-blue-50 hover:bg-blue-100">
                   <KeyRound className="w-3.5 h-3.5" /> Edit Login
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendProfileMail}
+                  disabled={isResendingProfileMail}
+                  className="h-7 text-xs flex items-center gap-1.5 font-medium border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                >
+                  {isResendingProfileMail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                  Resend Profile Mail
                 </Button>
                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${
                   user.status === 'approved' ? 'bg-green-100 text-green-800' :
