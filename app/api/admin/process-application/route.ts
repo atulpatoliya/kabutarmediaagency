@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
+import { createClient as createServerClient } from '@/lib/supabaseServer';
 
 const __SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const __SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -8,8 +9,33 @@ if (!__SUPABASE_URL || !__SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Server env missing: SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY');
 }
 const supabaseAdmin = createClient(__SUPABASE_URL, __SUPABASE_SERVICE_ROLE_KEY);
+const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
 
 export const dynamic = 'force-dynamic';
+
+async function requireAdmin() {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+  }
+
+  const { data: roleRow } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const isAdminByRole = roleRow?.role === 'admin';
+  const isMasterAdminEmail = (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+
+  if (!isAdminByRole && !isMasterAdminEmail) {
+    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) };
+  }
+
+  return { userId: user.id };
+}
 
 function generatePassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -184,6 +210,11 @@ function rejectionEmailHTML(name: string): string {
 
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireAdmin();
+    if (auth.error) {
+      return auth.error;
+    }
+
     const body = await request.json();
     const { applicationId, action, email, name, type } = body;
 
@@ -254,9 +285,11 @@ export async function POST(request: NextRequest) {
             .eq('id', applicationId);
 
           return NextResponse.json({
-            success: false,
-            error: `Account with email "${email}" already exists.`
-          }, { status: 409 });
+            success: true,
+            action: 'approved',
+            alreadyExists: true,
+            message: `Account with email "${email}" already exists. Application marked as approved.`
+          });
         }
         return NextResponse.json({ error: createError.message }, { status: 500 });
       }

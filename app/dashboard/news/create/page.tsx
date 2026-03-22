@@ -215,7 +215,7 @@ export default function CreateNewsStory() {
                     placeholder="A brief summary of the story (max 200 characters)..."
                     value={formData.description}
                     onChange={handleChange}
-                    className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mt-1"
+                    className="flex min-h-20 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                     maxLength={200}
                     required
                   />
@@ -229,7 +229,7 @@ export default function CreateNewsStory() {
                     placeholder="Write the full details of your news story here..."
                     value={formData.content}
                     onChange={handleChange}
-                    className="flex min-h-[250px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mt-1"
+                    className="flex min-h-62.5 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
                     required
                   />
                 </div>

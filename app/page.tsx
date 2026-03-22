@@ -77,7 +77,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-white to-gray-50 py-20 px-4">
+      <section className="bg-linear-to-br from-blue-50 via-white to-gray-50 py-20 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <Badge className="mb-6 bg-blue-100 text-blue-700 border-blue-200 px-4 py-1 text-sm">
             India&apos;s #1 Exclusive News Marketplace
@@ -177,7 +177,7 @@ export default async function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 px-4 bg-gradient-to-r from-primary to-secondary text-white">
+      <section className="py-16 px-4 bg-linear-to-r from-primary to-secondary text-white">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
             {[

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Inbox, Mail, Phone, Calendar, CheckCircle, XCircle, Copy, ExternalLink } from 'lucide-react';
-import { createClient } from '@/lib/supabaseClient';
 
 type TabType = 'all' | 'buyer' | 'reporter';
 type ModalData = {
@@ -16,30 +15,44 @@ type ModalData = {
 export default function AdminApplicationsDashboard() {
   const [applications, setApplications] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchError, setFetchError] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [modal, setModal] = useState<ModalData>(null);
   const [copied, setCopied] = useState('');
 
-  const supabase = createClient();
-  if (!supabase) return <div className="p-6 text-sm text-gray-500">Supabase not configured.</div>;
-
   const fetchApplications = async () => {
     setIsLoading(true);
+    setFetchError('');
     try {
-      const { data, error } = await supabase
-        .from('platform_applications')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const res = await fetch('/api/admin/applications', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      });
 
-      if (error) { console.error('Fetch error:', error); }
-      else { setApplications(Array.isArray(data) ? data : []); }
+      const result = await res.json();
+
+      if (!res.ok) {
+        const message = result?.error || 'Could not load applications.';
+        setFetchError(message);
+        setApplications([]);
+        return;
+      }
+
+      setApplications(Array.isArray(result?.applications) ? result.applications : []);
     } catch (err) {
       console.error(err);
+      setFetchError('Could not load applications. Please refresh and try again.');
+      setApplications([]);
     } finally {
       setIsLoading(false);
     }
-  };  useEffect(() => { fetchApplications(); }, [supabase]);
+  };
+
+  useEffect(() => {
+    fetchApplications();
+  }, []);
 
   const handleAction = async (app: any, action: 'approve' | 'reject') => {
     setActionLoading(app.id + action);
@@ -58,7 +71,7 @@ export default function AdminApplicationsDashboard() {
 
       const result = await res.json();
 
-      if (!res.ok || (!result.success && res.status !== 409)) {
+      if (!res.ok || !result.success) {
         alert(result.error || 'Something went wrong. Please try again.');
         return;
       }
@@ -70,6 +83,10 @@ export default function AdminApplicationsDashboard() {
           status: action === 'approve' ? 'approved' : 'rejected'
         } : a)
       );
+
+      if (result.alreadyExists && result.message) {
+        alert(result.message);
+      }
 
       // Show modal with email template / credentials
       setModal({
@@ -100,15 +117,13 @@ export default function AdminApplicationsDashboard() {
     archived: 'bg-gray-100 text-gray-700',
   };
 
-  const pendingApplications = applications.filter(a => a.status === 'pending');
-
   const tabItems: { key: TabType; label: string; count: number }[] = [
-    { key: 'all', label: 'All Applications', count: pendingApplications.length },
-    { key: 'buyer', label: '🏢 Buyers', count: pendingApplications.filter(a => a.type === 'buyer').length },
-    { key: 'reporter', label: '📰 Reporters', count: pendingApplications.filter(a => a.type === 'reporter').length },
+    { key: 'all', label: 'All Applications', count: applications.length },
+    { key: 'buyer', label: '🏢 Buyers', count: applications.filter(a => a.type === 'buyer').length },
+    { key: 'reporter', label: '📰 Reporters', count: applications.filter(a => a.type === 'reporter').length },
   ];
 
-  const filtered = activeTab === 'all' ? pendingApplications : pendingApplications.filter(a => a.type === activeTab);
+  const filtered = activeTab === 'all' ? applications : applications.filter(a => a.type === activeTab);
 
   return (
     <div className="space-y-6">
@@ -137,6 +152,14 @@ export default function AdminApplicationsDashboard() {
       </div>
 
       {/* Table */}
+      {fetchError && (
+        <Card className="border-red-200 bg-red-50/60 shadow-none">
+          <CardContent className="p-4 text-sm text-red-700">
+            {fetchError}
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading ? (
         <Card className="border-dashed shadow-none">
           <CardContent className="flex flex-col items-center justify-center p-12 text-center">
@@ -154,7 +177,7 @@ export default function AdminApplicationsDashboard() {
                     <th className="px-6 py-4 font-semibold text-gray-900">Type</th>
                     <th className="px-6 py-4 font-semibold text-gray-900">Date</th>
                     <th className="px-6 py-4 font-semibold text-gray-900 text-center">Status</th>
-                    <th className="px-6 py-4 font-semibold text-gray-900 text-center min-w-[200px]">Actions</th>
+                    <th className="px-6 py-4 font-semibold text-gray-900 text-center min-w-50">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -234,9 +257,9 @@ export default function AdminApplicationsDashboard() {
 
       {/* Result Modal */}
       {modal && (
-        <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4" onClick={() => setModal(null)}>
+        <div className="fixed inset-0 z-100 bg-black/60 flex items-center justify-center p-4" onClick={() => setModal(null)}>
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 relative" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setModal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">✕</button>
+            <button title="Close" aria-label="Close" onClick={() => setModal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl font-bold">✕</button>
 
             {modal.action === 'approved' ? (
               <>
@@ -255,13 +278,13 @@ export default function AdminApplicationsDashboard() {
                     <h3 className="font-semibold text-gray-900 text-sm uppercase tracking-wider">Login Credentials</h3>
                     <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2">
                       <span className="text-sm text-gray-700"><span className="font-medium">Email:</span> {modal.credentials.email}</span>
-                      <button onClick={() => copyText(modal.credentials!.email, 'email')} className="text-gray-400 hover:text-primary ml-2">
+                      <button title="Copy email" aria-label="Copy email" onClick={() => copyText(modal.credentials!.email, 'email')} className="text-gray-400 hover:text-primary ml-2">
                         <Copy className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-3 py-2">
                       <span className="text-sm text-gray-700"><span className="font-medium">Password:</span> <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono">{modal.credentials.password}</code></span>
-                      <button onClick={() => copyText(modal.credentials!.password, 'password')} className="text-gray-400 hover:text-primary ml-2">
+                      <button title="Copy password" aria-label="Copy password" onClick={() => copyText(modal.credentials!.password, 'password')} className="text-gray-400 hover:text-primary ml-2">
                         <Copy className="w-4 h-4" />
                       </button>
                     </div>
