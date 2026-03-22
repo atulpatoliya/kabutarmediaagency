@@ -4,16 +4,33 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
-import { PlusCircle, Search, Filter, Loader2, IndianRupee, Clock, CheckCircle2, XCircle } from 'lucide-react';
+import { PlusCircle, Search, Filter, Loader2, IndianRupee, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { createClient } from '@/lib/supabaseClient';
 
 const MASTER_ADMIN_EMAIL = (process.env.NEXT_PUBLIC_MASTER_ADMIN_EMAIL || 'directoratulpatoliya@gmail.com').toLowerCase();
 
+type StoryStatus = 'pending' | 'published' | 'sold' | 'rejected';
+type StatusFilter = 'all' | StoryStatus;
+
+type Story = {
+  id: string;
+  title: string;
+  description: string;
+  created_at: string;
+  reporter_price: number;
+  city: string;
+  state: string;
+  status: StoryStatus;
+};
+
 export default function MyNews() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [news, setNews] = useState<any[]>([]);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [news, setNews] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string>('');
   const [canSubmitNews, setCanSubmitNews] = useState(false);
   const supabase = createClient();
 
@@ -21,6 +38,7 @@ export default function MyNews() {
     async function fetchNews() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
 
       const { data: profile } = await supabase
         .from('users')
@@ -39,7 +57,7 @@ export default function MyNews() {
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        setNews(data);
+        setNews(data as Story[]);
       }
       setIsLoading(false);
     }
@@ -47,9 +65,37 @@ export default function MyNews() {
     fetchNews();
   }, [supabase]);
 
-  const filteredNews = news.filter(item =>
-    item.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredNews = news.filter((item) => {
+    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const handleDeleteStory = async (storyId: string, status: StoryStatus) => {
+    if (status !== 'pending' && status !== 'rejected') {
+      alert('Only pending or rejected stories can be deleted.');
+      return;
+    }
+
+    const confirmed = window.confirm('Are you sure you want to delete this story? This cannot be undone.');
+    if (!confirmed) return;
+
+    setDeletingId(storyId);
+    const { error } = await supabase
+      .from('news')
+      .delete()
+      .eq('id', storyId)
+      .eq('reporter_id', userId);
+
+    if (error) {
+      alert('Failed to delete story. Please try again.');
+      setDeletingId(null);
+      return;
+    }
+
+    setNews((prev) => prev.filter((item) => item.id !== storyId));
+    setDeletingId(null);
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -100,10 +146,21 @@ export default function MyNews() {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" className="gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto">
             <Filter className="h-4 w-4" />
-            Filter Status
-          </Button>
+            <select
+              title="Filter by status"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              className="h-9 rounded-md border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary ml-2"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="published">Published</option>
+              <option value="sold">Sold</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
         </CardContent>
       </Card>
 
@@ -138,12 +195,26 @@ export default function MyNews() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Link href={`/dashboard/news/${item.id}/edit`}>
-                    <Button variant="outline" size="sm">Edit</Button>
-                  </Link>
+                  {item.status === 'pending' || item.status === 'rejected' ? (
+                    <Link href={`/dashboard/news/${item.id}/edit`}>
+                      <Button variant="outline" size="sm">Edit</Button>
+                    </Link>
+                  ) : (
+                    <Button variant="outline" size="sm" disabled title="Only pending/rejected stories can be edited">Edit</Button>
+                  )}
                   <Link href={`/dashboard/news/${item.id}`}>
                     <Button variant="secondary" size="sm">View</Button>
                   </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={deletingId === item.id || (item.status !== 'pending' && item.status !== 'rejected')}
+                    onClick={() => handleDeleteStory(item.id, item.status)}
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                    title={item.status === 'pending' || item.status === 'rejected' ? 'Delete story' : 'Only pending/rejected stories can be deleted'}
+                  >
+                    {deletingId === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </Button>
                 </div>
               </CardContent>
             </Card>

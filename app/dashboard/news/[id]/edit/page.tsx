@@ -38,6 +38,7 @@ export default function StoryEditPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isEditable, setIsEditable] = useState(true);
   const [categories, setCategories] = useState<Category[]>([]);
   const [storyId, setStoryId] = useState('');
   const [formData, setFormData] = useState({
@@ -109,6 +110,9 @@ export default function StoryEditPage() {
       const editableStatuses = ['pending', 'rejected'];
       if (!editableStatuses.includes(story.status)) {
         setError('Only pending or rejected stories can be edited.');
+        setIsEditable(false);
+      } else {
+        setIsEditable(true);
       }
 
       setStoryId(story.id);
@@ -132,6 +136,10 @@ export default function StoryEditPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!storyId) return;
+    if (!isEditable) {
+      setError('This story is locked for editing because it is already published or sold.');
+      return;
+    }
 
     const parsedPrice = parseFloat(formData.reporterPrice);
     if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
@@ -210,6 +218,7 @@ export default function StoryEditPage() {
                 value={formData.title}
                 onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                 required
+                disabled={!isEditable}
                 className="mt-1"
               />
             </div>
@@ -222,6 +231,7 @@ export default function StoryEditPage() {
                 onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 maxLength={200}
                 required
+                disabled={!isEditable}
                 className="flex min-h-24 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mt-1"
               />
             </div>
@@ -233,6 +243,7 @@ export default function StoryEditPage() {
                 value={formData.content}
                 onChange={(e) => setFormData((prev) => ({ ...prev, content: e.target.value }))}
                 required
+                disabled={!isEditable}
                 className="flex min-h-80 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mt-1"
               />
             </div>
@@ -245,6 +256,7 @@ export default function StoryEditPage() {
                   title="Category"
                   value={formData.categoryId}
                   onChange={(e) => setFormData((prev) => ({ ...prev, categoryId: e.target.value }))}
+                  disabled={!isEditable}
                   className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary mt-1"
                 >
                   <option value="">Select category</option>
@@ -264,6 +276,7 @@ export default function StoryEditPage() {
                   value={formData.reporterPrice}
                   onChange={(e) => setFormData((prev) => ({ ...prev, reporterPrice: e.target.value }))}
                   required
+                  disabled={!isEditable}
                   className="mt-1"
                 />
               </div>
@@ -275,6 +288,7 @@ export default function StoryEditPage() {
                   value={formData.city}
                   onChange={(e) => setFormData((prev) => ({ ...prev, city: e.target.value }))}
                   required
+                  disabled={!isEditable}
                   className="mt-1"
                 />
               </div>
@@ -286,6 +300,7 @@ export default function StoryEditPage() {
                   value={formData.state}
                   onChange={(e) => setFormData((prev) => ({ ...prev, state: e.target.value }))}
                   required
+                  disabled={!isEditable}
                   className="mt-1"
                 />
               </div>
@@ -295,7 +310,7 @@ export default function StoryEditPage() {
               <Link href={storyId ? `/dashboard/news/${storyId}` : '/dashboard/news'}>
                 <Button type="button" variant="outline">Cancel</Button>
               </Link>
-              <Button type="submit" disabled={isSaving} className="gap-2">
+              <Button type="submit" disabled={isSaving || !isEditable} className="gap-2">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save Changes
               </Button>
