@@ -292,7 +292,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
               </div>
               <div className="flex items-center gap-3 text-gray-600">
                 <Phone className="h-4 w-4 text-gray-400" />
-                <span>{user.profile?.phone || 'N/A'}</span>
+                <span>{user.profile?.phone || user.phone || user.application_phone || 'N/A'}</span>
               </div>
               <div className="flex items-center gap-3 text-gray-600">
                 <MapPin className="h-4 w-4 text-gray-400" />

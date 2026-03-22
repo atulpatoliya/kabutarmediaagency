@@ -144,18 +144,34 @@ export async function GET(request: NextRequest) {
     const { data: reporterProfiles } = await supabaseAdmin
       .from('reporter_profiles')
       .select('user_id, full_name, phone, city');
+
+    const { data: applicationRows } = await supabaseAdmin
+      .from('platform_applications')
+      .select('email, phone, created_at')
+      .order('created_at', { ascending: false });
     
     const reporterMap = new Map(reporterProfiles?.map(p => [p.user_id, p]) || []);
+    const applicationPhoneByEmail = new Map<string, string>();
+
+    for (const appRow of (applicationRows || [])) {
+      const emailKey = String(appRow.email || '').toLowerCase().trim();
+      if (!emailKey || applicationPhoneByEmail.has(emailKey)) continue;
+      applicationPhoneByEmail.set(emailKey, appRow.phone || '');
+    }
 
     const combinedData = usersData.map(u => {
       const authUser = authMap.get(u.id);
       const reporterProfile = reporterMap.get(u.id);
+      const authEmail = (authUser?.email || '').toLowerCase().trim();
+      const applicationPhone = applicationPhoneByEmail.get(authEmail) || '';
       
       return {
         ...u,
         reporter_profiles: reporterProfile ? [reporterProfile] : [],
         metadata: authUser?.user_metadata || {},
-        email: authUser?.email || ''
+        email: authUser?.email || '',
+        application_phone: applicationPhone,
+        phone: reporterProfile?.phone || applicationPhone || ''
       };
     });
 

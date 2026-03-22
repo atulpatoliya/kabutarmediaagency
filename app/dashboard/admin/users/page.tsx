@@ -176,6 +176,7 @@ export default function AdminUsersDashboard() {
                   const profile = (Array.isArray(user?.reporter_profiles) && user.reporter_profiles.length > 0)
                     ? user.reporter_profiles[0]
                     : (user?.reporter_profiles || {} as any);
+                  const displayPhone = profile.phone || user.phone || user.application_phone;
                   return (
                     <tr key={user.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="px-6 py-4">
@@ -184,7 +185,7 @@ export default function AdminUsersDashboard() {
                             {profile.full_name || user.metadata?.full_name || 'No Name Found'}
                           </div>
                           <div className="text-gray-500 text-xs mt-0.5 font-mono">ID: {String(user.id).substring(0, 8)}...</div>
-                          {profile.phone && <div className="text-gray-400 text-xs mt-1">?? {profile.phone}</div>}
+                          {displayPhone && <div className="text-gray-400 text-xs mt-1">?? {displayPhone}</div>}
                           {profile.city && <div className="text-gray-400 text-xs">?? {profile.city}</div>}
                         </Link>
                       </td>

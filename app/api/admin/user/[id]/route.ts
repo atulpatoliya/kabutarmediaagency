@@ -112,6 +112,7 @@ export async function GET(
 
     // 2. Get auth email and metadata
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    const authEmail = (authData?.user?.email || '').trim();
     
     // 3. Get profile
     const { data: profileData } = await supabaseAdmin
@@ -119,6 +120,19 @@ export async function GET(
       .select('*')
       .eq('user_id', userId)
       .maybeSingle();
+
+    let applicationPhone: string | null = null;
+    if (authEmail) {
+      const { data: applicationRow } = await supabaseAdmin
+        .from('platform_applications')
+        .select('phone, created_at')
+        .ilike('email', authEmail)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      applicationPhone = applicationRow?.phone || null;
+    }
 
     // 4. Get news & transactions depending on role
     let newsList = [];
@@ -147,7 +161,9 @@ export async function GET(
         ...userData,
         email: authData?.user?.email,
         metadata: authData?.user?.user_metadata || {},
-        profile: profileData
+        profile: profileData,
+        application_phone: applicationPhone,
+        phone: profileData?.phone || applicationPhone || null
       },
       news: newsList,
       transactions: transactionsList
