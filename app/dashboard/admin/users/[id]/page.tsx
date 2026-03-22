@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,8 @@ import Link from 'next/link';
 
 type AssignableRole = 'buyer' | 'reporter' | 'both';
 
-export default function AdminUserDetails({ params }: { params: { id: string } }) {
+export default function AdminUserDetails() {
+  const params = useParams<{ id: string }>();
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showCredModal, setShowCredModal] = useState(false);
@@ -18,7 +20,7 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
-  const [userId, setUserId] = useState<string | null>(null);
+  const userId = typeof params?.id === 'string' ? params.id : null;
   const [copied, setCopied] = useState(false);
   const [isSendingLink, setIsSendingLink] = useState(false);
   const [generatedResetLink, setGeneratedResetLink] = useState('');
@@ -44,14 +46,6 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
       setTimeout(() => setCopied(false), 2000);
     }
   };
-
-  useEffect(() => {
-    async function unwrapParams() {
-      const p = await params;
-      setUserId(p.id);
-    }
-    unwrapParams();
-  }, [params]);
 
   useEffect(() => {
     if (!userId) return;

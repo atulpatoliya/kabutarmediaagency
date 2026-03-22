@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,8 +30,10 @@ type NewsDetail = {
   }[] | null;
 };
 
-export default function NewsDetail({ params }: { params: { id: string } }) {
+export default function NewsDetail() {
   const supabase = createClient();
+  const params = useParams<{ id: string }>();
+  const newsId = typeof params?.id === 'string' ? params.id : '';
   const [isLoading, setIsLoading] = useState(true);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState('');
@@ -59,7 +62,7 @@ export default function NewsDetail({ params }: { params: { id: string } }) {
             parent_id
           )
         `)
-        .eq('id', params.id)
+        .eq('id', newsId)
         .eq('status', 'published')
         .maybeSingle();
 
@@ -74,10 +77,10 @@ export default function NewsDetail({ params }: { params: { id: string } }) {
       setIsLoading(false);
     }
 
-    if (params.id) {
+    if (newsId) {
       fetchNewsItem();
     }
-  }, [params.id, supabase]);
+  }, [newsId, supabase]);
 
   const formatTimeAgo = (createdAt: string) => {
     const now = new Date().getTime();
