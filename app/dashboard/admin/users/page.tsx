@@ -14,8 +14,6 @@ export default function AdminUsersDashboard() {
   const [users, setUsers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [isSyncingRoles, setIsSyncingRoles] = useState(false);
-  const [isSyncingPhones, setIsSyncingPhones] = useState(false);
   const [roleTab, setRoleTab] = useState<RoleTab>('buyer');
   const [statusTab, setStatusTab] = useState<StatusTab>('pending');
 
@@ -42,49 +40,6 @@ export default function AdminUsersDashboard() {
   };
 
   useEffect(() => { fetchUsers(); }, [supabase]);
-
-  const handleBulkRoleSync = async () => {
-    setIsSyncingRoles(true);
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to sync reporter roles.');
-      } else {
-        alert(`Role sync complete. Updated ${data.totalUpdated || 0} user(s).`);
-        await fetchUsers();
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to sync reporter roles.');
-    } finally {
-      setIsSyncingRoles(false);
-    }
-  };
-
-  const handleBulkPhoneSync = async () => {
-    setIsSyncingPhones(true);
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'syncPhones' })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to sync phone numbers.');
-      } else {
-        alert(`Phone sync complete. Matched: ${data.matchedUsers || 0}, Auth updated: ${data.authMetadataUpdated || 0}, Reporter profiles updated: ${data.reporterProfilesUpdated || 0}.`);
-        await fetchUsers();
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to sync phone numbers.');
-    } finally {
-      setIsSyncingPhones(false);
-    }
-  };
 
   const handleUpdateStatus = async (userId: string, newStatus: string) => {
     if (!supabase) return;
@@ -126,19 +81,9 @@ export default function AdminUsersDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">User Management Panel</h1>
           <p className="text-gray-600 mt-1">Manage Reporters and Buyers who have accounts on the platform.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleBulkPhoneSync} disabled={isSyncingPhones || isLoading} variant="outline" className="border-indigo-200 text-indigo-700 hover:bg-indigo-50">
-            {isSyncingPhones ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Sync Phones
-          </Button>
-          <Button onClick={handleBulkRoleSync} disabled={isSyncingRoles || isLoading} variant="outline" className="border-green-200 text-green-700 hover:bg-green-50">
-            {isSyncingRoles ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Sync Reporter Roles
-          </Button>
-          <Button onClick={fetchUsers} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
-            {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '?'} Refresh
-          </Button>
-        </div>
+        <Button onClick={fetchUsers} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+          {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : '?'} Refresh
+        </Button>
       </div>
 
       <div className="flex gap-3">

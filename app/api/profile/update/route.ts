@@ -27,14 +27,24 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const rawName = (formData.get('name') as string | null) ?? '';
     const name = rawName.trim();
+    const rawPhone = (formData.get('phone') as string | null) ?? '';
+    const phone = rawPhone.trim();
+    const rawCity = (formData.get('city') as string | null) ?? '';
+    const city = rawCity.trim();
+    const rawBio = (formData.get('bio') as string | null) ?? '';
+    const bio = rawBio.trim();
     const image = formData.get('image') as File | null;
 
-    if (!name && !image) {
+    if (!name && !phone && !city && !bio && !image) {
       return NextResponse.json({ error: 'No changes to save.' }, { status: 400 });
     }
 
     if (name && name.length < 2) {
       return NextResponse.json({ error: 'Name must be at least 2 characters long.' }, { status: 400 });
+    }
+
+    if (phone && phone.length < 6) {
+      return NextResponse.json({ error: 'Phone number looks too short.' }, { status: 400 });
     }
 
     const adminClient = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -68,6 +78,9 @@ export async function POST(request: NextRequest) {
     const mergedMetadata = {
       ...(user.user_metadata || {}),
       ...(name ? { full_name: name } : {}),
+      ...(phone ? { phone } : {}),
+      ...(city ? { city } : {}),
+      ...(bio ? { bio } : {}),
       ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
     };
 
@@ -79,10 +92,61 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Profile update failed: ${updateError.message}` }, { status: 500 });
     }
 
+    // For reporter/both roles, keep reporter_profiles in sync with latest editable fields.
+    const { data: roleRow } = await adminClient
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (roleRow?.role === 'reporter' || roleRow?.role === 'both') {
+      const fullNameForProfile = name || String(mergedMetadata.full_name || '').trim() || 'Not provided';
+      const phoneForProfile = phone || String(mergedMetadata.phone || '').trim() || 'Not provided';
+      const cityForProfile = city || String(mergedMetadata.city || '').trim() || 'Not provided';
+
+      const { data: existingReporterProfile } = await adminClient
+        .from('reporter_profiles')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Ensure row exists, then apply latest user-edited values.
+      if (!existingReporterProfile) {
+        await adminClient
+          .from('reporter_profiles')
+          .insert({
+            user_id: user.id,
+            full_name: fullNameForProfile,
+            phone: phoneForProfile,
+            city: cityForProfile,
+            id_proof_url: '',
+            bank_name: 'Not provided',
+            account_number: 'Not provided',
+            ifsc_code: 'Not provided',
+            agreement_accepted: false,
+          });
+      }
+
+      const profilePatch: Record<string, string> = {};
+      if (name) profilePatch.full_name = fullNameForProfile;
+      if (phone) profilePatch.phone = phoneForProfile;
+      if (city) profilePatch.city = cityForProfile;
+
+      if (Object.keys(profilePatch).length > 0) {
+        await adminClient
+          .from('reporter_profiles')
+          .update(profilePatch)
+          .eq('user_id', user.id);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       fullName: (updated.user.user_metadata?.full_name as string | undefined) || '',
       avatarUrl: (updated.user.user_metadata?.avatar_url as string | undefined) || '',
+      phone: (updated.user.user_metadata?.phone as string | undefined) || '',
+      city: (updated.user.user_metadata?.city as string | undefined) || '',
+      bio: (updated.user.user_metadata?.bio as string | undefined) || '',
     });
   } catch (error: any) {
     return NextResponse.json({ error: error?.message || 'Unexpected server error.' }, { status: 500 });

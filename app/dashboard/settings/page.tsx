@@ -16,6 +16,11 @@ const UserProfileManagement = () => {
     const [initialPreviewUrl, setInitialPreviewUrl] = useState<string>('');
     const [userEmail, setUserEmail] = useState('');
     const [userMobile, setUserMobile] = useState('');
+    const [initialUserMobile, setInitialUserMobile] = useState('');
+    const [userCity, setUserCity] = useState('');
+    const [initialUserCity, setInitialUserCity] = useState('');
+    const [userBio, setUserBio] = useState('');
+    const [initialUserBio, setInitialUserBio] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -46,10 +51,47 @@ const UserProfileManagement = () => {
                         setPreviewUrl(avatarUrl);
                         setInitialPreviewUrl(avatarUrl);
                     }
-                    
-                    // Fetch user phone from metadata or database
-                    const phone = user.user_metadata?.phone || user.phone || '+1234567890';
-                    setUserMobile(phone);
+
+                                        const phoneFromMeta = String(user.user_metadata?.phone || '').trim();
+                                        const cityFromMeta = String(user.user_metadata?.city || '').trim();
+                                        const bioFromMeta = String(user.user_metadata?.bio || '').trim();
+
+                                        setUserMobile(phoneFromMeta);
+                                        setInitialUserMobile(phoneFromMeta);
+                                        setUserCity(cityFromMeta);
+                                        setInitialUserCity(cityFromMeta);
+                                        setUserBio(bioFromMeta);
+                                        setInitialUserBio(bioFromMeta);
+
+                                        // Reporter users can also read own reporter profile via RLS.
+                                        const { data: selfRole } = await supabase
+                                            .from('users')
+                                            .select('role')
+                                            .eq('id', user.id)
+                                            .maybeSingle();
+
+                                        if (selfRole?.role === 'reporter' || selfRole?.role === 'both') {
+                                            const { data: profileRow } = await supabase
+                                                .from('reporter_profiles')
+                                                .select('phone, city, full_name')
+                                                .eq('user_id', user.id)
+                                                .maybeSingle();
+
+                                            if (profileRow?.full_name && !fullNameFromMeta) {
+                                                setName(profileRow.full_name);
+                                                setInitialName(profileRow.full_name);
+                                            }
+
+                                            if (profileRow?.phone && !phoneFromMeta) {
+                                                setUserMobile(profileRow.phone);
+                                                setInitialUserMobile(profileRow.phone);
+                                            }
+
+                                            if (profileRow?.city && !cityFromMeta) {
+                                                setUserCity(profileRow.city);
+                                                setInitialUserCity(profileRow.city);
+                                            }
+                                        }
                 }
             } catch (error) {
                 console.error('Error fetching user data:', error);
@@ -63,9 +105,15 @@ const UserProfileManagement = () => {
 
     // Check if there are unsaved changes
     const normalizedName = name.trim();
+    const normalizedPhone = userMobile.trim();
+    const normalizedCity = userCity.trim();
+    const normalizedBio = userBio.trim();
     const hasNameChanges = normalizedName !== initialName.trim();
+    const hasPhoneChanges = normalizedPhone !== initialUserMobile.trim();
+    const hasCityChanges = normalizedCity !== initialUserCity.trim();
+    const hasBioChanges = normalizedBio !== initialUserBio.trim();
     const hasImageChanges = profileImage !== null;
-    const hasChanges = hasNameChanges || hasImageChanges;
+    const hasChanges = hasNameChanges || hasPhoneChanges || hasCityChanges || hasBioChanges || hasImageChanges;
     const canSubmit = hasChanges && !isSaving && !errorMessage && (normalizedName.length >= 2 || hasImageChanges);
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +155,9 @@ const UserProfileManagement = () => {
             if (normalizedName.length >= 2) {
                 formData.append('name', normalizedName);
             }
+            formData.append('phone', normalizedPhone);
+            formData.append('city', normalizedCity);
+            formData.append('bio', normalizedBio);
             if (profileImage) {
                 formData.append('image', profileImage);
             }
@@ -123,9 +174,18 @@ const UserProfileManagement = () => {
 
             const updatedName = (result?.fullName as string | undefined) || normalizedName;
             const updatedAvatarUrl = (result?.avatarUrl as string | undefined) || initialPreviewUrl;
+            const updatedPhone = (result?.phone as string | undefined) ?? normalizedPhone;
+            const updatedCity = (result?.city as string | undefined) ?? normalizedCity;
+            const updatedBio = (result?.bio as string | undefined) ?? normalizedBio;
 
             setName(updatedName || '');
             setInitialName(updatedName || '');
+            setUserMobile(updatedPhone || '');
+            setInitialUserMobile(updatedPhone || '');
+            setUserCity(updatedCity || '');
+            setInitialUserCity(updatedCity || '');
+            setUserBio(updatedBio || '');
+            setInitialUserBio(updatedBio || '');
             setProfileImage(null);
             setInitialPreviewUrl(updatedAvatarUrl || '');
             setPreviewUrl(updatedAvatarUrl || '');
@@ -149,6 +209,9 @@ const UserProfileManagement = () => {
 
     const handleReset = () => {
         setName(initialName);
+        setUserMobile(initialUserMobile);
+        setUserCity(initialUserCity);
+        setUserBio(initialUserBio);
         setProfileImage(null);
         setErrorMessage('');
         setPreviewUrl(initialPreviewUrl);
@@ -263,10 +326,35 @@ const UserProfileManagement = () => {
                                     <Input
                                         type="tel"
                                         value={userMobile}
-                                        readOnly
-                                        className="bg-gray-100 cursor-not-allowed"
+                                        onChange={(e) => setUserMobile(e.target.value)}
+                                        placeholder="Enter your mobile number"
                                     />
-                                    <p className="text-xs text-gray-500 mt-2">Contact support to change mobile</p>
+                                    <p className="text-xs text-gray-500 mt-2">You can update your mobile number here.</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        City
+                                    </label>
+                                    <Input
+                                        type="text"
+                                        value={userCity}
+                                        onChange={(e) => setUserCity(e.target.value)}
+                                        placeholder="Enter your city"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        About / Bio
+                                    </label>
+                                    <textarea
+                                        value={userBio}
+                                        onChange={(e) => setUserBio(e.target.value)}
+                                        rows={4}
+                                        className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                                        placeholder="Tell us about yourself"
+                                    />
                                 </div>
                             </CardContent>
                         </Card>

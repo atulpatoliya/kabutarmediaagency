@@ -281,6 +281,7 @@ export async function POST(request: NextRequest) {
       const finalEmail = String(applicationRow.email || email || '').trim();
       const finalName = String(applicationRow.full_name || name || '').trim();
       const finalPhone = String(applicationRow.phone || body.phone || '').trim();
+      const finalMessage = String(body.message || '').trim();
 
       if (!finalEmail || !finalName || !finalType) {
         return NextResponse.json({ error: 'Missing email, name, or type' }, { status: 400 });
@@ -294,7 +295,13 @@ export async function POST(request: NextRequest) {
         email: finalEmail,
         password: generatedPassword,
         email_confirm: true,
-        user_metadata: { full_name: finalName, phone: finalPhone }
+        user_metadata: {
+          full_name: finalName,
+          phone: finalPhone,
+          city: String(body.city || '').trim(),
+          bio: finalMessage,
+          application_type: finalType,
+        }
       });
 
       if (createError) {
@@ -310,6 +317,18 @@ export async function POST(request: NextRequest) {
           );
 
           if (existingAuthUser) {
+            const existingMetadata = existingAuthUser.user_metadata || {};
+            await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
+              user_metadata: {
+                ...existingMetadata,
+                full_name: finalName,
+                phone: finalPhone,
+                city: String(body.city || existingMetadata.city || '').trim(),
+                bio: finalMessage || String(existingMetadata.bio || ''),
+                application_type: finalType,
+              },
+            });
+
             await supabaseAdmin
               .from('users')
               .upsert({ id: existingAuthUser.id, role: roleToSet, status: 'approved' }, { onConflict: 'id' });
