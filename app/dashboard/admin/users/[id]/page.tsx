@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, CheckCircle, XCircle, Mail, Phone, MapPin, IndianRupee, FileText, ShoppingCart, Loader2, KeyRound, Wand2, Copy } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, Mail, Phone, MapPin, IndianRupee, FileText, ShoppingCart, Loader2, KeyRound, Wand2, Copy, Eye } from 'lucide-react';
 import Link from 'next/link';
 
 type AssignableRole = 'buyer' | 'reporter' | 'both';
@@ -437,7 +437,9 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                     {news.map((item: any) => (
                       <li key={item.id} className="p-4 transition-all duration-200 hover:bg-gray-50 sm:hover:translate-x-0.5">
                         <div className="mb-1 flex flex-wrap items-start justify-between gap-2">
-                          <h4 className="font-semibold text-gray-900">{item.title}</h4>
+                          <Link href={`/dashboard/admin/review/${item.id}`} className="group min-w-0">
+                            <h4 className="font-semibold text-gray-900 transition-colors group-hover:text-primary line-clamp-1">{item.title}</h4>
+                          </Link>
                           <span className={`rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
                             item.status === 'published' ? 'bg-green-100 text-green-700' :
                             item.status === 'sold' ? 'bg-blue-100 text-blue-700' :
@@ -451,6 +453,9 @@ export default function AdminUserDetails({ params }: { params: { id: string } })
                           <span>{new Date(item.created_at).toLocaleDateString()}</span>
                           <span className="flex items-center gap-1 text-green-600"><IndianRupee className="h-3 w-3" /> {item.reporter_price}</span>
                           <span>{item.city}, {item.state}</span>
+                          <Link href={`/dashboard/admin/review/${item.id}`} className="inline-flex items-center gap-1 text-primary hover:underline">
+                            <Eye className="h-3.5 w-3.5" /> Open
+                          </Link>
                         </div>
                       </li>
                     ))}
