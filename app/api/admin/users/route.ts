@@ -165,3 +165,86 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireAdmin();
+    if (auth.error) {
+      return auth.error;
+    }
+
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const isMasterAdminEmail = (user?.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+
+    if (!isMasterAdminEmail) {
+      return NextResponse.json({ error: 'Only master admin can run bulk role sync.' }, { status: 403 });
+    }
+
+    const { data: { users: authUsers }, error: authUsersError } = await supabaseAdmin.auth.admin.listUsers();
+    if (authUsersError) throw authUsersError;
+
+    const authUsersByEmail = new Map(
+      (authUsers || [])
+        .filter((u) => !!u.email)
+        .map((u) => [(u.email || '').toLowerCase().trim(), u.id])
+    );
+
+    // Sync from reporter_profiles (strongest source)
+    const { data: reporterProfiles, error: reporterProfilesError } = await supabaseAdmin
+      .from('reporter_profiles')
+      .select('user_id');
+    if (reporterProfilesError) throw reporterProfilesError;
+
+    const reporterIdsFromProfiles = (reporterProfiles || []).map((r) => r.user_id);
+    let updatedFromProfiles = 0;
+    if (reporterIdsFromProfiles.length > 0) {
+      const { data: updatedRows, error: updateProfilesError } = await supabaseAdmin
+        .from('users')
+        .update({ role: 'reporter', status: 'approved' })
+        .in('id', reporterIdsFromProfiles)
+        .eq('role', 'buyer')
+        .select('id');
+
+      if (updateProfilesError) throw updateProfilesError;
+      updatedFromProfiles = (updatedRows || []).length;
+    }
+
+    // Sync from approved reporter applications by email match
+    const { data: approvedReporterApps, error: approvedReporterAppsError } = await supabaseAdmin
+      .from('platform_applications')
+      .select('email')
+      .eq('type', 'reporter')
+      .eq('status', 'approved');
+    if (approvedReporterAppsError) throw approvedReporterAppsError;
+
+    const reporterIdsFromApps = Array.from(new Set(
+      (approvedReporterApps || [])
+        .map((row) => authUsersByEmail.get((row.email || '').toLowerCase().trim()))
+        .filter(Boolean)
+    )) as string[];
+
+    let updatedFromApplications = 0;
+    if (reporterIdsFromApps.length > 0) {
+      const { data: updatedRows, error: updateAppsError } = await supabaseAdmin
+        .from('users')
+        .update({ role: 'reporter', status: 'approved' })
+        .in('id', reporterIdsFromApps)
+        .eq('role', 'buyer')
+        .select('id');
+
+      if (updateAppsError) throw updateAppsError;
+      updatedFromApplications = (updatedRows || []).length;
+    }
+
+    return NextResponse.json({
+      success: true,
+      updatedFromProfiles,
+      updatedFromApplications,
+      totalUpdated: updatedFromProfiles + updatedFromApplications,
+    });
+  } catch (error: any) {
+    console.error('Bulk Role Sync API Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
