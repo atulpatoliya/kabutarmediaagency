@@ -12,6 +12,7 @@ DROP TABLE IF EXISTS public.queries CASCADE;
 DROP TABLE IF EXISTS public.transactions CASCADE;
 DROP TABLE IF EXISTS public.news CASCADE;
 DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.buyer_profiles CASCADE;
 DROP TABLE IF EXISTS public.reporter_profiles CASCADE;
 DROP TABLE IF EXISTS public.users CASCADE;
 DROP TABLE IF EXISTS public.platform_applications CASCADE;
@@ -33,6 +34,7 @@ CREATE TABLE public.users (
     id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
     role user_role NOT NULL DEFAULT 'buyer',
     status user_status NOT NULL DEFAULT 'pending',
+    profile_completed BOOLEAN DEFAULT FALSE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -48,6 +50,18 @@ CREATE TABLE public.reporter_profiles (
     ifsc_code TEXT NOT NULL,
     agreement_accepted BOOLEAN NOT NULL DEFAULT FALSE,
     generated_password TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 4B. Buyer Profiles Table
+CREATE TABLE public.buyer_profiles (
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE PRIMARY KEY,
+    company_name TEXT NOT NULL,
+    contact_person TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    city TEXT NOT NULL,
+    company_registration_url TEXT,
+    agreement_accepted BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -76,6 +90,7 @@ VALUES
 CREATE TABLE public.news (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     reporter_id UUID REFERENCES public.users(id) NOT NULL,
+    reporter_name TEXT,
     title TEXT NOT NULL,
     description TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -115,13 +130,30 @@ CREATE TABLE public.queries (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 9. Row Level Security Policies
+-- 8B. Platform Applications Table (for tracking reporter/buyer applications both with and without auth)
+CREATE TABLE public.platform_applications (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN ('buyer', 'reporter')),
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    message TEXT,
+    status TEXT DEFAULT 'pending' NOT NULL,
+    admin_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Row Level Security Policies
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reporter_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.buyer_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.news ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.queries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.platform_applications ENABLE ROW LEVEL SECURITY;
 
 -- Helper Function
 CREATE OR REPLACE FUNCTION get_user_role(user_id UUID)
@@ -153,28 +185,39 @@ CREATE POLICY "Admins can update users" ON public.users FOR UPDATE USING (get_us
 
 -- Trigger to insert user on auth signup
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO public.users (id, role, status)
+  INSERT INTO public.users (id, role, status, profile_completed)
   VALUES (
     new.id,
     CASE
-      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::user_role
-      ELSE 'buyer'::user_role
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::public.user_role
+      ELSE 'buyer'::public.user_role
     END,
-    'approved'::user_status
+    CASE
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'approved'::public.user_status
+      ELSE 'pending'::public.user_status
+    END,
+    CASE
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN TRUE
+      ELSE FALSE
+    END
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 -- Backfill public.users for existing auth accounts (useful after schema resets)
-INSERT INTO public.users (id, role, status)
+INSERT INTO public.users (id, role, status, profile_completed)
 SELECT
   au.id,
   CASE
@@ -182,19 +225,42 @@ SELECT
     WHEN rp.user_id IS NOT NULL THEN 'reporter'::user_role
     ELSE 'buyer'::user_role
   END,
-  'approved'::user_status
+  CASE
+    WHEN lower(coalesce(au.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'approved'::user_status
+    WHEN rp.user_id IS NOT NULL THEN 'approved'::user_status
+    ELSE 'pending'::user_status
+  END,
+  CASE
+    WHEN lower(coalesce(au.email, '')) = lower('directoratulpatoliya@gmail.com') THEN TRUE
+    WHEN rp.user_id IS NOT NULL THEN TRUE
+    WHEN bp.user_id IS NOT NULL THEN TRUE
+    ELSE FALSE
+  END
 FROM auth.users au
 LEFT JOIN public.reporter_profiles rp ON rp.user_id = au.id
+LEFT JOIN public.buyer_profiles bp ON bp.user_id = au.id
 LEFT JOIN public.users pu ON pu.id = au.id
 WHERE pu.id IS NULL;
 
 UPDATE public.users
 SET role = 'admin'::user_role,
-    status = 'approved'::user_status
+    status = 'approved'::user_status,
+    profile_completed = TRUE
 WHERE id IN (
   SELECT id
   FROM auth.users
   WHERE lower(coalesce(email, '')) = lower('directoratulpatoliya@gmail.com')
+);
+
+-- Update profile_completed where profiles exist
+UPDATE public.users
+SET profile_completed = TRUE
+WHERE EXISTS (
+  SELECT 1 FROM public.reporter_profiles
+  WHERE reporter_profiles.user_id = users.id
+) OR EXISTS (
+  SELECT 1 FROM public.buyer_profiles
+  WHERE buyer_profiles.user_id = users.id
 );
 
 -- Reporter Profiles Policies
@@ -206,6 +272,16 @@ DROP POLICY IF EXISTS "Reporters can insert own profile" ON public.reporter_prof
 CREATE POLICY "Reporters can insert own profile" ON public.reporter_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS "Admins can read all profiles" ON public.reporter_profiles;
 CREATE POLICY "Admins can read all profiles" ON public.reporter_profiles FOR SELECT USING (get_user_role(auth.uid()) = 'admin');
+
+-- Buyer Profiles Policies
+DROP POLICY IF EXISTS "Buyers can read own profile" ON public.buyer_profiles;
+CREATE POLICY "Buyers can read own profile" ON public.buyer_profiles FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Buyers can update own profile" ON public.buyer_profiles;
+CREATE POLICY "Buyers can update own profile" ON public.buyer_profiles FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Buyers can insert own profile" ON public.buyer_profiles;
+CREATE POLICY "Buyers can insert own profile" ON public.buyer_profiles FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Admins can read all buyer profiles" ON public.buyer_profiles;
+CREATE POLICY "Admins can read all buyer profiles" ON public.buyer_profiles FOR SELECT USING (get_user_role(auth.uid()) = 'admin');
 
 -- Categories Policies
 DROP POLICY IF EXISTS "Anyone can read categories" ON public.categories;
@@ -220,8 +296,13 @@ DROP POLICY IF EXISTS "Public can read published news" ON public.news;
 CREATE POLICY "Public can read published news" ON public.news FOR SELECT USING (status = 'published');
 DROP POLICY IF EXISTS "Reporters can read own news" ON public.news;
 CREATE POLICY "Reporters can read own news" ON public.news FOR SELECT USING (auth.uid() = reporter_id);
-DROP POLICY IF EXISTS "Reporters can insert own news" ON public.news;
-CREATE POLICY "Reporters can insert own news" ON public.news FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+DROP POLICY IF EXISTS "Reporters with profile can insert news" ON public.news;
+CREATE POLICY "Reporters with profile can insert news" ON public.news FOR INSERT WITH CHECK (
+  auth.uid() = reporter_id 
+  AND EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND profile_completed = TRUE AND role IN ('reporter', 'both')
+  )
+);
 DROP POLICY IF EXISTS "Reporters can update own news if not published" ON public.news;
 CREATE POLICY "Reporters can update own news if not published" ON public.news FOR UPDATE 
   USING (auth.uid() = reporter_id AND status != 'published' AND status != 'sold');
@@ -251,6 +332,16 @@ DROP POLICY IF EXISTS "Users can insert queries" ON public.queries;
 CREATE POLICY "Users can insert queries" ON public.queries FOR INSERT WITH CHECK (auth.uid() = sender_id);
 DROP POLICY IF EXISTS "Admins full access queries" ON public.queries;
 CREATE POLICY "Admins full access queries" ON public.queries USING (get_user_role(auth.uid()) = 'admin');
+
+-- Platform Applications Policies
+DROP POLICY IF EXISTS "Users can read own application" ON public.platform_applications;
+CREATE POLICY "Users can read own application" ON public.platform_applications FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can insert application" ON public.platform_applications;
+CREATE POLICY "Users can insert application" ON public.platform_applications FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users can update own application if pending" ON public.platform_applications;
+CREATE POLICY "Users can update own application if pending" ON public.platform_applications FOR UPDATE USING (auth.uid() = user_id AND status = 'pending');
+DROP POLICY IF EXISTS "Admins full access applications" ON public.platform_applications;
+CREATE POLICY "Admins full access applications" ON public.platform_applications USING (get_user_role(auth.uid()) = 'admin');
 
 -- 10. View Tracking System (Function)
 CREATE TABLE public.news_views (
@@ -298,21 +389,12 @@ CREATE POLICY "Users can insert media"
 ON storage.objects FOR INSERT
 WITH CHECK ( bucket_id = 'news-media' AND auth.uid() IS NOT NULL );
 
--- 11. Platform Applications (Lead Gen Forms without Auth)
-CREATE TABLE IF NOT EXISTS public.platform_applications (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    type TEXT NOT NULL CHECK (type IN ('buyer', 'reporter')),
-    full_name TEXT NOT NULL,
-    email TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    message TEXT,
-    status TEXT DEFAULT 'pending' NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
+-- Platform Applications RLS Policies
 ALTER TABLE public.platform_applications ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Anyone can insert applications" ON public.platform_applications;
 CREATE POLICY "Anyone can insert applications" ON public.platform_applications FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Users can read own application" ON public.platform_applications;
+CREATE POLICY "Users can read own application" ON public.platform_applications FOR SELECT USING (auth.uid() = user_id OR auth.uid() IS NULL);
 DROP POLICY IF EXISTS "Admins can view and update applications" ON public.platform_applications;
 CREATE POLICY "Admins can view and update applications" ON public.platform_applications USING (get_user_role(auth.uid()) = 'admin');
 
@@ -329,6 +411,39 @@ BEGIN
   END;
 END $$;
 
+CREATE OR REPLACE FUNCTION public.handle_new_user() 
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.users (id, role, status, profile_completed)
+  VALUES (
+    new.id,
+    CASE
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'admin'::public.user_role
+      ELSE 'buyer'::public.user_role
+    END,
+    CASE
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN 'approved'::public.user_status
+      ELSE 'pending'::public.user_status
+    END,
+    CASE
+      WHEN lower(coalesce(new.email, '')) = lower('directoratulpatoliya@gmail.com') THEN TRUE
+      ELSE FALSE
+    END
+  )
+  ON CONFLICT (id) DO NOTHING;
+  RETURN new;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
 ALTER TABLE public.categories
 ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 
@@ -340,6 +455,16 @@ ADD COLUMN IF NOT EXISTS generated_password TEXT;
 
 ALTER TABLE public.reporter_profiles
 ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
+
+-- Add missing columns to platform_applications if they don't exist (for existing projects)
+ALTER TABLE public.platform_applications
+ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES public.users(id) ON DELETE CASCADE;
+
+ALTER TABLE public.platform_applications
+ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+
+ALTER TABLE public.platform_applications
+ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL;
 
 -- Existing project backfill for public.users if rows are missing.
 INSERT INTO public.users (id, role, status)
@@ -373,7 +498,8 @@ WHERE id IN (
 
 UPDATE public.users u
 SET role = 'reporter'::user_role,
-    status = 'approved'::user_status
+    status = 'approved'::user_status,
+    profile_completed = TRUE
 FROM auth.users au
 JOIN public.platform_applications pa
   ON lower(coalesce(pa.email, '')) = lower(coalesce(au.email, ''))

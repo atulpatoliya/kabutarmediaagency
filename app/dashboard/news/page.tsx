@@ -22,6 +22,12 @@ type Story = {
   city: string;
   state: string;
   status: StoryStatus;
+  reporter_id?: string;
+  users?: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
 };
 
 export default function MyNews() {
@@ -31,6 +37,8 @@ export default function MyNews() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
+  const [userRole, setUserRole] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
   const [canSubmitNews, setCanSubmitNews] = useState(false);
   const supabase = createClient();
 
@@ -39,6 +47,7 @@ export default function MyNews() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
       setUserId(user.id);
+      setUserEmail(user.email || '');
 
       const { data: profile } = await supabase
         .from('users')
@@ -47,18 +56,96 @@ export default function MyNews() {
         .maybeSingle();
 
       const role = profile?.role || '';
+      setUserRole(role);
       const hasNewsPermission = role === 'reporter' || role === 'both' || role === 'admin' || (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
       setCanSubmitNews(hasNewsPermission);
 
-      const { data, error } = await supabase
-        .from('news')
-        .select('*')
-        .eq('reporter_id', user.id)
-        .order('created_at', { ascending: false });
+      // Check if user is Master Admin
+      const isMasterAdmin = (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL || role === 'admin';
 
-      if (!error && data) {
-        setNews(data as Story[]);
+      try {
+        let query = supabase.from('news').select('*');
+        
+        // Master Admin sees all news, Reporter sees only their own
+        if (!isMasterAdmin) {
+          query = query.eq('reporter_id', user.id);
+        }
+        
+        const { data: newsData, error: newsError } = await query.order('created_at', { ascending: false });
+
+        if (newsError) {
+          console.error('Error fetching news:', newsError);
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Fetched news data:', newsData, 'isMasterAdmin:', isMasterAdmin);
+
+        // Now fetch reporter details for each news item
+        if (newsData && newsData.length > 0) {
+          const newsWithReporters = await Promise.all(
+            newsData.map(async (newsItem: any) => {
+              if (isMasterAdmin && newsItem.reporter_id) {
+                try {
+                  // પહેલા reporter_profiles થી full_name લાવ
+                  const { data: reporterProfile } = await supabase
+                    .from('reporter_profiles')
+                    .select('full_name')
+                    .eq('user_id', newsItem.reporter_id);
+                  
+                  let fullName = reporterProfile && reporterProfile.length > 0 
+                    ? reporterProfile[0].full_name 
+                    : null;
+                  
+                  // અને auth.users થી email પણ લાવ
+                  const { data: authUser } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', newsItem.reporter_id)
+                    .single();
+                  
+                  // જો reporter profile નથી તો email use કર
+                  if (!fullName && authUser) {
+                    fullName = authUser.email || newsItem.reporter_id.substring(0, 8) + '...';
+                  }
+                  
+                  if (!fullName) {
+                    fullName = newsItem.reporter_id.substring(0, 8) + '...';
+                  }
+                  
+                  console.log(`Reporter ${newsItem.reporter_id}: ${fullName}`);
+                  
+                  return {
+                    ...newsItem,
+                    users: {
+                      id: newsItem.reporter_id,
+                      full_name: fullName,
+                      email: ''
+                    }
+                  };
+                } catch (err) {
+                  console.error(`Exception: ${err}`);
+                  return {
+                    ...newsItem,
+                    users: {
+                      id: newsItem.reporter_id,
+                      full_name: newsItem.reporter_id.substring(0, 8) + '...',
+                      email: ''
+                    }
+                  };
+                }
+              }
+              return newsItem;
+            })
+          );
+          setNews(newsWithReporters as Story[]);
+        } else {
+          setNews([]);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
       }
+      
       setIsLoading(false);
     }
 
@@ -115,12 +202,19 @@ export default function MyNews() {
     }
   };
 
+  // Dynamic dashboard content based on role
+  const isMasterAdmin = userEmail.toLowerCase() === MASTER_ADMIN_EMAIL || userRole === 'admin';
+  const dashboardTitle = isMasterAdmin ? 'All News Dashboard' : 'My News Dashboard';
+  const dashboardSubtitle = isMasterAdmin 
+    ? 'Manage all submitted and published news stories here' 
+    : 'Manage all your submitted and published news stories here';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My News Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage all your submitted and published news stories here</p>
+          <h1 className="text-2xl font-bold text-gray-900">{dashboardTitle}</h1>
+          <p className="text-gray-600 mt-1">{dashboardSubtitle}</p>
         </div>
         {canSubmitNews ? (
           <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>
@@ -185,6 +279,11 @@ export default function MyNews() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 line-clamp-1 mb-3">{item.description}</p>
+                  {isMasterAdmin && item.users && (
+                    <div className="text-xs text-gray-600 mb-3 font-medium">
+                      Reporter: <span className="text-gray-900 font-semibold">{item.users.full_name}</span> | Reporter ID: <span className="text-gray-900 font-semibold">{item.reporter_id}</span> | News ID: <span className="text-gray-900 font-semibold">{item.id}</span>
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-gray-500">
                     <span>{new Date(item.created_at).toLocaleDateString()}</span>
                     <span className="flex items-center gap-1">
@@ -228,7 +327,9 @@ export default function MyNews() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No News Stories Found</h3>
             <p className="text-gray-500 max-w-sm mx-auto mb-6">
-              You haven't submitted any news stories yet, or none match your search criteria.
+              {isMasterAdmin
+                ? 'No news stories found for the selected filters.'
+                : "You haven't submitted any news stories yet, or none match your search criteria."}
             </p>
                 {canSubmitNews ? (
                   <Link href="/dashboard/news/create" className={buttonVariants({ className: "bg-primary hover:bg-primary/90 text-white gap-2" })}>

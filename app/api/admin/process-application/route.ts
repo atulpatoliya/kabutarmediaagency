@@ -382,6 +382,11 @@ export async function POST(request: NextRequest) {
             message: `Account with email "${finalEmail}" already exists. Application marked as approved.`
           });
         }
+        if (createError.message === 'Database error creating new user') {
+          return NextResponse.json({
+            error: 'Auth signup trigger failed in Supabase. Update the public.handle_new_user() function from the latest schema.sql, then try approve again.'
+          }, { status: 500 });
+        }
         return NextResponse.json({ error: createError.message }, { status: 500 });
       }
 

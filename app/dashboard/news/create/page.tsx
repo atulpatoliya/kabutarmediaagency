@@ -129,12 +129,23 @@ export default function CreateNewsStory() {
 
       const { data } = await supabase
         .from('users')
-        .select('role')
+        .select('role, profile_completed')
         .eq('id', user.id)
         .maybeSingle();
 
       const role = data?.role || '';
-      const allowed = role === 'reporter' || role === 'both' || role === 'admin' || (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+      const profileCompleted = data?.profile_completed || false;
+      const isMasterAdmin = (user.email || '').toLowerCase() === MASTER_ADMIN_EMAIL;
+      
+      // Master admin can always submit; reporters/both must have completed profile
+      const allowed = role === 'admin' || isMasterAdmin ? true : (role === 'reporter' || role === 'both') && profileCompleted;
+      
+      if (!allowed && (role === 'reporter' || role === 'both') && !profileCompleted) {
+        // Profile not completed - redirect to reporter profile page
+        router.push('/apply-reporter?from=create-news');
+        return;
+      }
+      
       setCanSubmitNews(allowed);
       setIsCheckingRole(false);
     }
@@ -199,6 +210,15 @@ export default function CreateNewsStory() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Fetch reporter name from reporter_profiles
+      let reporterName = '';
+      const { data: reporterProfile } = await supabase
+        .from('reporter_profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      reporterName = reporterProfile?.full_name || '';
+
       const createResponse = await withTimeout(
         fetch('/api/news/create', {
           method: 'POST',
@@ -211,6 +231,7 @@ export default function CreateNewsStory() {
             state: formData.state,
             city: formData.city,
             reporterPrice: parsedPrice,
+            reporterName: reporterName,
           }),
         })
       );
@@ -286,11 +307,18 @@ export default function CreateNewsStory() {
         </Link>
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
-            <CardTitle className="text-amber-900">Submission Access Restricted</CardTitle>
+            <CardTitle className="text-amber-900">Complete Your Profile First</CardTitle>
             <CardDescription className="text-amber-800">
-              Only users with reporter, both, or admin roles can submit stories.
+              To submit news stories, you need to complete your reporter profile with your name, phone, and city information.
             </CardDescription>
           </CardHeader>
+          <CardContent>
+            <Link href="/apply-reporter">
+              <Button variant="default" className="gap-2">
+                Go to Profile Setup
+              </Button>
+            </Link>
+          </CardContent>
         </Card>
       </div>
     );

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { CheckCircle, XCircle, Loader2, Users, Eye, RefreshCw, Phone, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Users, Eye, RefreshCw, Phone, MapPin, ChevronUp, ChevronDown, Trash2 } from 'lucide-react';
 import { createClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
@@ -63,6 +63,37 @@ export default function AdminUsersDashboard() {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!supabase) return;
+    
+    const confirmDelete = window.confirm(
+      'Are you sure you want to permanently delete this user? This action cannot be undone. All their data, profiles, and news will be deleted.'
+    );
+    
+    if (!confirmDelete) return;
+
+    setActionLoading(userId);
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'Failed to delete user. Please try again.');
+      } else {
+        alert('User deleted successfully.');
+        await fetchUsers();
+      }
+    } catch (err) {
+      console.error(err);
+      alert('An error occurred while deleting the user.');
     } finally {
       setActionLoading(null);
     }
@@ -467,6 +498,15 @@ export default function AdminUsersDashboard() {
                               <Eye className="w-4 h-4 mr-1" /> View
                             </Button>
                           </Link>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDeleteUser(user.id)}
+                            disabled={actionLoading === user.id}
+                            className="gap-1 text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
+                          >
+                            {actionLoading === user.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                          </Button>
                         </div>
                       </td>
                     </tr>
@@ -550,6 +590,15 @@ export default function AdminUsersDashboard() {
                           <Eye className="mr-1 h-4 w-4" /> View
                         </Button>
                       </Link>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleDeleteUser(user.id)}
+                        disabled={actionLoading === user.id}
+                        className="gap-1 text-red-600 transition-colors hover:bg-red-50 hover:text-red-700"
+                      >
+                        {actionLoading === user.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

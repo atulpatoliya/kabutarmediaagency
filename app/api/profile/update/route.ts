@@ -92,12 +92,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Profile update failed: ${updateError.message}` }, { status: 500 });
     }
 
-    // For reporter/both roles, keep reporter_profiles in sync with latest editable fields.
+    // For reporter/both roles, keep reporter_profiles in sync with latest editable fields and set profile_completed = true
     const { data: roleRow } = await adminClient
       .from('users')
       .select('role')
       .eq('id', user.id)
       .maybeSingle();
+
+    // Update profile_completed flag when reporter or buyer completes their profile
+    if (roleRow?.role === 'reporter' || roleRow?.role === 'both' || roleRow?.role === 'buyer') {
+      const { error: updateProfileCompleted } = await adminClient
+        .from('users')
+        .update({ profile_completed: true })
+        .eq('id', user.id);
+
+      if (updateProfileCompleted) {
+        console.error('Error updating profile_completed flag:', updateProfileCompleted.message);
+      }
+    }
 
     if (roleRow?.role === 'reporter' || roleRow?.role === 'both') {
       const fullNameForProfile = name || String(mergedMetadata.full_name || '').trim() || 'Not provided';
